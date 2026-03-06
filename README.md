@@ -350,16 +350,18 @@ All top features represent physiological *trajectories*, not isolated abnormal v
 
 ---
 
-Planned Extensions
+## Planned Extensions
 
- Rule-Based AI Layer — A structured reasoning layer built on top of the existing physiological engine, enabling explicit clinical logic to interpret and explain instability classifications without relying solely on learned patterns.
- Score Fluctuation Analysis — Using the existing dataset to study how combined_score fluctuates across patient trajectories: identifying instability oscillation patterns, transition velocities between severity states, and the physiological drivers behind score variance.
- Validation on larger, multi-hospital datasets
- Deep learning time-series models (Transformers, LSTMs)
- Real-time ICU deployment pipeline
- Prospective clinical validation study
- Extension to broader ICU age groups
- ---
+- [ ] **Rule-Based AI Layer** — A structured reasoning layer built on top of the existing physiological engine, enabling explicit clinical logic to interpret and explain instability classifications without relying solely on learned patterns.
+- [ ] **Score Fluctuation Analysis** — Using the existing dataset to study how `combined_score` fluctuates across patient trajectories: identifying instability oscillation patterns, transition velocities between severity states, and the physiological drivers behind score variance.
+- [ ] Validation on larger, multi-hospital datasets
+- [ ] Deep learning time-series models (Transformers, LSTMs)
+- [ ] Real-time ICU deployment pipeline
+- [ ] Prospective clinical validation study
+- [ ] Extension to broader ICU age groups
+
+---
+
 ## Author
 
 **Arjun**

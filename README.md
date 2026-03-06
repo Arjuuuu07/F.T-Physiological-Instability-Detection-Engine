@@ -33,7 +33,6 @@ Physiological Risk Engine
 Disease Pattern Detection
   · Tier 1 / 2 / 3 condition activation
   · Early deterioration ramp
-  · Synergistic physiological interaction
   · Condition amplification multiplier
           ↓
 Temporal Stability Modeling (FSM)

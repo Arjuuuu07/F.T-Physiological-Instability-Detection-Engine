@@ -1,32 +1,51 @@
 # F.T — Physiological Instability Detection Engine
 
-> A hybrid physiological reasoning and machine learning system for real-time ICU patient deterioration detection.
+> A hybrid physiological reasoning and machine learning system for real-time ICU patient deterioration detection and prediction — up to **15 minutes in advance**.
 
 ---
 
 ## What is F.T?
 
-**F.T (Flow-Threshold)** combines clinical physiological modeling with machine learning to detect and predict deterioration in ICU patients. Rather than relying on simple alarm thresholds, F.T learns the *trajectory* of physiological instability — catching deterioration before it becomes serious.
+**F.T (Flow-Threshold)** is designed to detect and predict physiological deterioration in ICU patients aged 65 and above using continuous vital sign monitoring.
+
+Rather than relying on simple alarm thresholds or pure machine learning, F.T combines four components:
+
+- **Medical physiology rules** — clinically grounded deterioration patterns
+- **Mathematical severity modeling** — continuous, nonlinear risk encoding
+- **Temporal state logic** — FSM-based label stabilization
+- **Machine learning prediction** — trained on engineered physiological trajectories
+
+The result is a system that learns *how deterioration unfolds over time*, not just whether a value is abnormal at a single moment.
 
 ---
 
 ## System Pipeline
 
 ```
-Raw ICU Vital Streams
-        ↓
+Raw ICU Vital Streams  (2-second resolution)
+          ↓
 Physiological Risk Engine
-        ↓
+  · Threshold zone mapping
+  · Continuous abnormality encoding
+  · Nonlinear severity transformation
+  · Multi-organ risk aggregation
+          ↓
 Disease Pattern Detection
-        ↓
+  · Tier 1 / 2 / 3 condition activation
+  · Early deterioration ramp
+  · Synergistic physiological interaction
+  · Condition amplification multiplier
+          ↓
 Temporal Stability Modeling (FSM)
-        ↓
+  · Label confirmation & state transition rules
+          ↓
 Feature Engineering
-        ↓
+  · Raw vitals · Slopes · Rolling stats · Lags · Condition flags
+          ↓
 Machine Learning Prediction
+  · HistGradientBoostingClassifier
+  · 3-class severity output: Normal / Critical / Emergency
 ```
-
-Each stage progressively transforms raw time-series data into a structured instability signal for the ML model.
 
 ---
 
@@ -34,12 +53,13 @@ Each stage progressively transforms raw time-series data into a structured insta
 
 **Source:** [VitalDB ICU Dataset](https://vitaldb.net/)
 
-| Property | Detail |
+| Property | Value |
 |---|---|
 | Patients | 31 ICU patients |
 | Age | ≥ 65 years |
-| Time rows | ~211,000 |
+| Monitoring | Continuous vital sign streams |
 | Resolution | 2-second intervals |
+| Total rows | ~211,000 |
 
 This forms a high-resolution geriatric ICU physiological stream dataset.
 
@@ -47,225 +67,301 @@ This forms a high-resolution geriatric ICU physiological stream dataset.
 
 ## Vital Signals
 
-**Primary signals monitored:**
+### Primary Inputs
 
-| Signal | Description |
-|---|---|
-| SpO₂ | Oxygen saturation |
-| HR | Heart rate |
-| RR | Respiratory rate |
-| SBP / DBP | Systolic / Diastolic blood pressure |
-| ETCO₂ | End-tidal CO₂ |
+| Signal | Column | Description |
+|---|---|---|
+| SpO₂ | `spo2` | Oxygen saturation |
+| Heart Rate | `heart_rate` | Pulse rate (bpm) |
+| Respiratory Rate | `resp_rate_smoothed` | RR with rolling smoothing applied |
+| Systolic BP | `sbp` | Systolic blood pressure |
+| Diastolic BP | `dbp` | Diastolic blood pressure |
+| End-Tidal CO₂ | `etco2` | Ventilatory CO₂ marker |
 
-**Derived signals:**
+> Raw `resp_rate` is **excluded** from the model. Only the smoothed version `resp_rate_smoothed` is used to reduce sensor noise.
+
+### Derived Signals (treated as first-class features)
 
 ```
 Pulse Pressure  =  SBP − DBP
 MBP             =  (SBP + 2 × DBP) / 3
 ```
 
-> Respiratory rate is smoothed using rolling averages to reduce signal noise.
+`pulse_pressure` is computed from raw inputs. `mbp` is already present in the dataset and used directly as a feature.
 
 ---
 
 ## Physiological Risk Engine
 
-Raw vitals are converted into a continuous physiological instability score using three components.
+### Step 1 — Threshold Zone Mapping
 
-### 1. Threshold Zones
-
-Each vital is divided into severity zones:
+Each vital is divided into three clinical risk zones:
 
 | Zone | Meaning |
 |---|---|
-| Normal | Stable physiology |
-| Critical | Moderate instability |
-| Emergency | Severe deterioration |
+| Normal | Physiologically stable |
+| Critical | Significant abnormality |
+| Emergency | Severe instability |
 
-**Example thresholds:**
+Full threshold table:
 
 | Vital | Normal | Critical | Emergency |
 |---|---|---|---|
-| SpO₂ | ≥ 95% | 92% | 90% |
-| HR (high) | 90 bpm | 110 bpm | 120 bpm |
-| MBP (low) | 70 mmHg | 65 mmHg | 60 mmHg |
-| RR (high) | 20 /min | 25 /min | 30 /min |
-| ETCO₂ (high) | 45 mmHg | 50 mmHg | 55 mmHg |
+| SpO₂ | ≥ 95% | 92–95% | ≤ 90% |
+| HR (high) | ≤ 90 bpm | 90–110 | ≥ 120 |
+| HR (low) | ≥ 60 bpm | 50–60 | ≤ 45 |
+| RR (high) | ≤ 20 /min | 20–25 | ≥ 30 |
+| RR (low) | ≥ 12 /min | 10–12 | ≤ 8 |
+| SBP (low) | ≥ 110 mmHg | 100–110 | ≤ 90 |
+| SBP (high) | ≤ 150 mmHg | 150–170 | ≥ 185 |
+| DBP (low) | ≥ 60 mmHg | 55–60 | ≤ 50 |
+| DBP (high) | ≤ 85 mmHg | 85–95 | ≥ 100 |
+| MBP | ≥ 70 mmHg | 65–70 | ≤ 60 |
+| ETCO₂ (high) | ≤ 45 mmHg | 45–50 | ≥ 55 |
+| ETCO₂ (low) | ≥ 35 mmHg | 30–35 | ≤ 25 |
+| Pulse Pressure (low) | ≥ 45 mmHg | 35–45 | ≤ 30 |
+| Pulse Pressure (high) | ≤ 65 mmHg | 65–75 | ≥ 85 |
 
-### 2. Continuous Abnormality Encoding
+### Step 2 — Continuous Abnormality Encoding
 
-Each vital is mapped to a continuous score `z ∈ [0, 1]`:
-
-```
-0.0  →  Normal
-0.5  →  Critical boundary
-1.0  →  Emergency boundary
-```
-
-This avoids abrupt threshold jumps and models gradual deterioration.
-
-### 3. Nonlinear Severity Escalation
-
-```
-s = 2z² − 1
-```
-
-Severe abnormalities escalate rapidly in contribution, reflecting real clinical urgency.
-
-### 4. Multi-Organ Risk Aggregation
+Rather than binary zone membership, each vital is mapped to a continuous score `z ∈ [0, 1]`:
 
 ```
-severity_sum = Σ sᵢ  (across all vital signs)
+z = 0.0  →  Normal (no abnormality)
+z = 0.5  →  Critical boundary
+z = 1.0  →  Emergency boundary
 ```
 
-Models cumulative multi-organ physiological stress.
+This models gradual physiological deterioration rather than abrupt threshold jumps.
+
+### Step 3 — Nonlinear Severity Transformation
+
+Each z-score is transformed to emphasize extreme abnormalities:
+
+```
+severity = 2^z − 1
+```
+
+| z | Severity |
+|---|---|
+| 0.0 | 0.00 |
+| 0.5 | 0.41 |
+| 1.0 | 1.00 |
+
+Severity grows faster near emergency levels, reflecting the nonlinear escalation of clinical risk.
+
+### Step 4 — Multi-Organ Risk Aggregation
+
+```
+severity_sum = Σ severity_i  (across all 8 vital signs)
+```
+
+This captures both single severe abnormalities and multiple concurrent mild abnormalities — modeling cumulative multi-organ physiological stress.
 
 ---
 
 ## Disease Pattern Modeling
 
-F.T encodes clinically meaningful deterioration patterns across three tiers.
+F.T encodes 12 clinically meaningful deterioration patterns across three tiers.
 
-### Tier 1 — High Risk
+### Tier 1 — Major Instability
 
-| Pattern | Trigger |
-|---|---|
-| **Shock Spiral** | MBP < 70 AND HR > 100 |
-| **Respiratory Burnout** | SpO₂ < 92% AND RR > 22 |
-| **Hypercapnic Failure** | ETCO₂ > 50 AND RR < 10 |
+| Pattern | Trigger | Clinical Meaning |
+|---|---|---|
+| **Shock Spiral** | MBP < 70 AND HR > 100 | Low perfusion with compensatory tachycardia |
+| **Respiratory Burnout** | SpO₂ < 92 AND RR > 22 | Oxygen failure with increased respiratory effort |
+| **Hypercapnic Failure** | ETCO₂ > 50 AND RR < 10 | Ventilatory failure with CO₂ retention |
 
 ### Tier 2 — Moderate Risk
 
-- Low pulse pressure
-- Wide pulse pressure with high SBP
-- Respiratory-hemodynamic interaction
+| Pattern | Trigger |
+|---|---|
+| **Pulse Pressure Low** | Pulse Pressure ≤ 30 |
+| **Wide PP + High SBP** | Pulse Pressure ≥ 70 AND SBP ≥ 170 |
+| **Respiratory-Hemodynamic Combo** | SpO₂ < 92 AND RR > 22 AND HR > 100 |
 
-### Tier 3 — Subtle Physiological Stress
+### Tier 3 — Subtle / Hidden Risk
 
-- Masked shock
-- Occult metabolic instability
-- Hidden deterioration trends
+| Pattern | Trigger |
+|---|---|
+| **Hypertensive Emergency** | SBP ≥ 180 AND Pulse Pressure ≥ 70 |
+| **Stable Deceiver** | SpO₂ 92–94 AND HR 75–90 AND MBP 65–70 |
+| **Masked Shock** | MBP 65–72 AND HR < 90 (perfusion decline without tachycardia) |
+| **Occult Acidosis** | ETCO₂ ≤ 32 AND RR ≥ 24 AND SpO₂ 88–92 |
+| **Trend Decline** | Simultaneous adverse point-to-point changes in ETCO₂, SpO₂, HR |
+| **Trend Activate** | Slope-based sustained deterioration across 5–7 minute windows |
 
-### Early Warning Ramp
+### Early Deterioration Ramp
 
-Deterioration detection begins *before* thresholds are crossed:
+Detection begins *before* thresholds are crossed:
 
 ```
-early_start = threshold ± 0.2 × (threshold − normal_reference)
+early_start = threshold − 20% × (threshold − normal_reference)
 ```
 
-When one variable deteriorates, ramp thresholds for related vitals shrink by up to **50%**, modeling multi-organ failure cascade dynamics.
+This allows warning signals to develop before full clinical failure.
+
+### Condition Amplification
+
+Active conditions amplify the final instability score:
+
+```
+final_score = severity_sum × M_eff
+
+M_eff = 1 + A × (target_multiplier − 1)
+```
+
+Where `A` is the condition activation strength (0–1) and multipliers are capped at **2.2** to prevent runaway escalation.
 
 ---
 
 ## Temporal Stability Engine
 
-A **Finite State Machine (FSM)** prevents label flickering from noisy data.
+A **Finite State Machine (FSM)** prevents label flickering caused by noisy vital sign data.
 
 Key rules:
-- **15 consecutive identical states** are required to confirm a label
-- **Emergency → Normal** direct transition is not permitted
-- Mixed Critical/Emergency states collapse to **Critical**
-- Downgrades require **sustained recovery** over time
 
-This ensures physiological state transitions are clinically meaningful.
+- **15 consecutive identical states** required to confirm a label change
+- **Emergency → Normal** direct transition is blocked
+- Mixed Critical / Emergency states collapse to **Critical**
+- Downgrades require **sustained recovery** — not a single normal reading
+
+This ensures state transitions reflect genuine physiological change, not sensor artifacts.
 
 ---
 
-## Final Instability Score
+## Severity Classification
 
 ```
-final_score = severity_sum × M_eff
-
-M_eff = 1 + A(target − 1)
+final_score < 0.75            →  ✅ Normal
+0.75 ≤ final_score < 1.5      →  ⚠️  Critical
+final_score ≥ 1.5             →  🚨 Emergency
 ```
 
-Tier multipliers adjust severity based on active disease patterns.
+---
 
-### Classification
+## Feature Engineering
 
-| Score | Label |
+Temporal deterioration patterns are captured through **~68 engineered features** across six categories.
+
+### Raw Vitals (8)
+
+`spo2` · `heart_rate` · `resp_rate_smoothed` · `sbp` · `dbp` · `mbp` · `etco2` · `pulse_pressure`
+
+### Vital Slopes (36)
+
+OLS slopes computed for all 8 vitals + `combined_score` across 4 time windows:
+
+| Window | Row Count | Trend Scope |
+|---|---|---|
+| 2m | 60 rows | Short-term change |
+| 5m | 150 rows | Medium-term trend |
+| 7m | 210 rows | Medium-term trend |
+| 15m | 450 rows | Sustained trajectory |
+
+Example columns: `slope_2m_spo2` · `slope_5m_heart_rate` · `slope_7m_mbp` · `slope_15m_etco2`
+
+### Rolling Statistics (10)
+
+Computed over `combined_score`:
+
+| Feature | Windows |
 |---|---|
-| < 0.75 | ✅ Normal |
-| ≥ 0.75 | ⚠️ Critical |
-| ≥ 1.4 | 🚨 Emergency |
+| `roll_mean_{w}_combined` | 2m, 5m, 7m, 15m |
+| `roll_std_{w}_combined` | 2m, 5m, 7m, 15m |
+| `roll_min_15m_combined` | 15m only |
+| `roll_max_15m_combined` | 15m only |
+
+### Lag Features (9)
+
+15-minute lookback (450 rows) for all 8 vitals + `combined_score`:
+
+`lag_15m_spo2` · `lag_15m_heart_rate` · `lag_15m_etco2` · `lag_15m_pulse_pressure` · `lag_15m_combined_score` · ...
+
+### Condition Binary Flags (12)
+
+One binary flag per disease pattern — Tier 1 (3 flags), Tier 2 (3 flags), Tier 3 (6 flags).
+
+### Physiological Instability Score (1)
+
+`combined_score` — the output of the risk engine — used directly as a model feature.
 
 ---
-
-Raw Vitals (8)
-spo2 · heart_rate · resp_rate_smoothed · sbp · dbp · mbp · etco2 · pulse_pressure
-
-Note: raw resp_rate is excluded — only the smoothed version enters the model. mbp and pulse_pressure are derived signals treated as first-class features.
-
-Vital Slopes (36)
-OLS slopes computed for all 8 vitals + combined_score across 4 time windows:
-WindowRowsExample2m60 rowsslope_2m_spo25m150 rowsslope_5m_heart_rate7m210 rowsslope_7m_mbp15m450 rowsslope_15m_etco2
-Rolling Statistics (10)
-Computed over combined_score at each window:
-FeatureWindowsroll_mean_{w}_combined2m, 5m, 7m, 15mroll_std_{w}_combined2m, 5m, 7m, 15mroll_min_15m_combined15m onlyroll_max_15m_combined15m only
-Lag Features (9)
-15-minute lookback (450 rows) for all 8 vitals + combined_score:
-lag_15m_spo2 · lag_15m_heart_rate · lag_15m_etco2 · lag_15m_combined_score · ...
-Condition Binary Flags (12)
-One flag per disease pattern — Tier 1 (3), Tier 2 (3), Tier 3 (6). See Disease Pattern Modeling.
-Physiological Instability Score (1)
-combined_score — the final output of the risk engine, used directly as a model feature.
 
 ## Machine Learning
 
 **Primary model:** `HistGradientBoostingClassifier`
 
-Models evaluated: HistGradientBoosting, RandomForest — selected by **macro-F1 score**.
+**Models evaluated:** HistGradientBoosting, RandomForest — winner selected by **macro-F1 score**.
 
-### Performance (5-Fold Cross-Validation)
+**Split strategy:** Row-wise stratified 80/20 hold-out. Each row encodes its own temporal context via rolling and lag features, making row-wise splitting valid.
+
+**Class balancing:** Balanced sample weights computed from training rows only, applied during `fit()`.
+
+### Cross-Validation Performance (5-Fold, StratifiedKFold)
 
 | Metric | Score |
 |---|---|
-| Macro F1 | **0.958** |
-| Balanced Accuracy | **0.962** |
+| Macro F1 | **0.958 ± 0.004** |
+| Balanced Accuracy | **0.962 ± 0.003** |
+
+Hold-out test performance is consistent with CV results.
 
 ### Top Predictive Features
 
-1. `roll_max_15m_combined`
-2. `roll_std_15m_combined`
-3. `roll_mean_15m_combined`
-4. `slope_15m_etco2`
-5. `slope_15m_heart_rate`
-6. `pulse_pressure`
+| Rank | Feature | Interpretation |
+|---|---|---|
+| 1 | `roll_max_15m_combined` | Peak instability over 15 minutes |
+| 2 | `roll_std_15m_combined` | Volatility of instability score |
+| 3 | `roll_mean_15m_combined` | Sustained average instability |
+| 4 | `slope_15m_etco2` | CO₂ trend — ventilatory trajectory |
+| 5 | `slope_15m_heart_rate` | HR trend — cardiac trajectory |
+| 6 | `pulse_pressure` | Vascular instability marker |
 
-These features represent physiological instability *trajectories*, not isolated abnormal values.
+All top features represent physiological *trajectories*, not isolated abnormal values.
+
+---
+
+## Repository Structure
+
+```
+├── catevcode.py                  # Physiological risk engine & feature pipeline
+├── catev_model_v2_training.py    # Feature engineering & ML training
+└── README.md
+```
 
 ---
 
 ## Applications
 
-- ICU early warning systems
-- Real-time patient deterioration monitoring
-- Clinical decision support tools
+- ICU early warning and real-time deterioration monitoring
+- Clinical decision support for bedside staff
 - Multi-organ failure detection research
-- Physiological instability modeling
+- Physiological instability modeling and dataset construction
 
 ---
 
 ## Limitations
 
 - Small patient cohort (31 patients) — external validation required
-- Currently a **research prototype**, not a clinical product
-- Single-center dataset — generalizability to be assessed
+- Single-center dataset — generalizability to other ICU populations is unknown
+- Currently a **research prototype**, not a certified clinical product
+- Requires continuous high-frequency vital monitoring at 2-second resolution
 
 ---
 
-## Future Work
+Planned Extensions
 
-- [ ] Larger, multi-hospital datasets
-- [ ] Deep learning time-series models (e.g., Transformers, LSTMs)
-- [ ] Real-time ICU deployment pipeline
-- [ ] Prospective clinical validation study
-
----
-
+ Rule-Based AI Layer — A structured reasoning layer built on top of the existing physiological engine, enabling explicit clinical logic to interpret and explain instability classifications without relying solely on learned patterns.
+ Score Fluctuation Analysis — Using the existing dataset to study how combined_score fluctuates across patient trajectories: identifying instability oscillation patterns, transition velocities between severity states, and the physiological drivers behind score variance.
+ Validation on larger, multi-hospital datasets
+ Deep learning time-series models (Transformers, LSTMs)
+ Real-time ICU deployment pipeline
+ Prospective clinical validation study
+ Extension to broader ICU age groups
+ ---
 ## Author
 
 **Arjun**
 MSc Artificial Intelligence & Machine Learning
-*Machine Learning & Physiological Modeling Research*
+Indian Institute of Information Technology, Lucknow (IIIT-L)

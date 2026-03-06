@@ -192,21 +192,24 @@ Tier multipliers adjust severity based on active disease patterns.
 
 ---
 
-## Feature Engineering
+Raw Vitals (8)
+spo2 · heart_rate · resp_rate_smoothed · sbp · dbp · mbp · etco2 · pulse_pressure
 
-Temporal deterioration patterns are captured through a rich feature set:
+Note: raw resp_rate is excluded — only the smoothed version enters the model. mbp and pulse_pressure are derived signals treated as first-class features.
 
-| Feature Type | Examples |
-|---|---|
-| Raw vitals | SpO₂, HR, RR, SBP, DBP, ETCO₂ |
-| Vital slopes | `slope_2m_heart_rate`, `slope_15m_etco2` |
-| Rolling statistics | `roll_mean_15m_combined`, `roll_std_7m_combined` |
-| Lagged vitals | `lag_15m_pulse_pressure` |
-| Instability dynamics | `roll_max_15m_combined` |
-
-Slopes are computed across **2m, 5m, 7m, and 15m** windows to capture short- and medium-term trends.
-
----
+Vital Slopes (36)
+OLS slopes computed for all 8 vitals + combined_score across 4 time windows:
+WindowRowsExample2m60 rowsslope_2m_spo25m150 rowsslope_5m_heart_rate7m210 rowsslope_7m_mbp15m450 rowsslope_15m_etco2
+Rolling Statistics (10)
+Computed over combined_score at each window:
+FeatureWindowsroll_mean_{w}_combined2m, 5m, 7m, 15mroll_std_{w}_combined2m, 5m, 7m, 15mroll_min_15m_combined15m onlyroll_max_15m_combined15m only
+Lag Features (9)
+15-minute lookback (450 rows) for all 8 vitals + combined_score:
+lag_15m_spo2 · lag_15m_heart_rate · lag_15m_etco2 · lag_15m_combined_score · ...
+Condition Binary Flags (12)
+One flag per disease pattern — Tier 1 (3), Tier 2 (3), Tier 3 (6). See Disease Pattern Modeling.
+Physiological Instability Score (1)
+combined_score — the final output of the risk engine, used directly as a model feature.
 
 ## Machine Learning
 

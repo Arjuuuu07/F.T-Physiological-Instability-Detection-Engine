@@ -186,9 +186,9 @@ Tier multipliers adjust severity based on active disease patterns.
 
 | Score | Label |
 |---|---|
-| < 0.5 | ✅ Normal |
-| ≥ 0.5 | ⚠️ Critical |
-| ≥ 1.2 | 🚨 Emergency |
+| < 0.75 | ✅ Normal |
+| ≥ 0.75 | ⚠️ Critical |
+| ≥ 1.4 | 🚨 Emergency |
 
 ---
 

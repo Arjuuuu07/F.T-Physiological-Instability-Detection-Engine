@@ -359,7 +359,19 @@ All top features represent physiological *trajectories*, not isolated abnormal v
 - [ ] Prospective clinical validation study
 - [ ] Extension to broader ICU age groups
 
----
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+## Dataset
+
+The master dataset used for this project is hosted on Kaggle due to GitHub file size limits.
+
+Download the dataset from Kaggle:
+https://www.kaggle.com/datasets/arjunmahesh09999/final
+
+After downloading, place the dataset file inside the project directory before running the code.
+
+The dataset contains physiological signals used for predicting patient states:
+Normal, Critical, and Emergency.
+--------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Author
 

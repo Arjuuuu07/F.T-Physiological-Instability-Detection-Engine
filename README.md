@@ -369,8 +369,7 @@ https://www.kaggle.com/datasets/arjunmahesh09999/final
 
 After downloading, place the dataset file inside the project directory before running the code.
 
-The dataset contains physiological signals used for predicting patient states:
-Normal, Critical, and Emergency.
+The dataset contains physiological signals used for predicting patient states: 0,1,2.
 --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Author

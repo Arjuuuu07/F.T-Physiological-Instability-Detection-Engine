@@ -55,7 +55,7 @@ Deep Learning Prediction
 | Property   | Value                          |
 |------------|-------------------------------|
 | Patients   | 103 ICU patients              |
-| Age        | ≥ 65 years                   |
+| Age        | ≥ 60 years & 80>              |
 | Monitoring | Continuous vital sign streams |
 | Resolution | 2-second intervals            |
 | Total rows | ~620,000                      |

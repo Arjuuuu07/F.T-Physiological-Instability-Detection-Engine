@@ -467,7 +467,7 @@ catev_cnn_v8_test_cm.png          # Test confusion matrix
 
 The master dataset used for this project is hosted on Kaggle due to GitHub file size limits.
 
-📥 **[Download the dataset from Kaggle](https://www.kaggle.com/datasets/arjunmahesh09999/final)**
+📥 **[Download the dataset from Kaggle](https://www.kaggle.com/datasets/arjunmahesh09999/master-data)**
 
 After downloading, place the dataset file inside the project directory before running the code.
 

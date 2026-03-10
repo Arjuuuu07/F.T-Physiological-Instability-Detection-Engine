@@ -299,12 +299,7 @@ One binary flag per disease pattern — Tier 1 (3 flags), Tier 2 (3 flags), Tier
 
 ### Cross-Validation Performance (5-Fold, StratifiedKFold)
 
-| Metric | Score |
-|---|---|
-| Macro F1 | **0.958 ± 0.004** |
-| Balanced Accuracy | **0.962 ± 0.003** |
 
-Hold-out test performance is consistent with CV results.
 
 ### Top Predictive Features
 

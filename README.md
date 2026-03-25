@@ -473,7 +473,9 @@ cnn_gru_v6_outputs/
 ## Dataset
 
 The master dataset used for this project is hosted on Kaggle due to GitHub file size limits.
+
 DOWNLOAD INITIAL DATASET FROM KAGGLE-https://www.kaggle.com/datasets/arjunmahesh09999/before-cleaning
+
 DOWNLOAD MASTER_DATASET FROM KAGGLE-https://www.kaggle.com/datasets/arjunmahesh09999/new-masterdata
 
 After downloading, place the dataset file inside the project directory before running the code.

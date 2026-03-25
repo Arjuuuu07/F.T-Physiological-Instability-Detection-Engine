@@ -21,18 +21,28 @@ The result is a system that learns *how deterioration unfolds over time*, not ju
 
 ## Design Philosophy — Why This Is Not Just a Prediction Model
 
-F.T is built as a **dual-purpose clinical intelligence system**, not a standalone classifier.
+**F.T is designed as a dual-purpose clinical intelligence system rather than a standalone predictive model.**
 
-The prediction model is only one half of the system. The other half is a **Rule-Based AI layer** (in active development) designed to:
+The learned prediction component constitutes only one layer of the system. Complementing it is a **Rule-Based Clinical Intelligence Layer** (under active development), which is responsible for:
 
-- Alert clinical staff in real time with **explicit physiological reasoning**
-- Identify the **exact vital sign patterns driving instability**
-- Explain *why* a patient's risk score changed — not just that it did
-- Translate model output back into human-readable clinical language
+* Generating *real-time clinical alerts* with interpretable reasoning
+* Identifying the *specific physiological drivers* of patient instability
+* Explaining *why* a patient’s risk profile is evolving, rather than only reporting predictions
+* Translating model outputs into clinically meaningful, human-readable insights**
 
-This is why feature engineering is **deliberately constrained to 41 physiologically interpretable features**. Every feature either directly represents a vital sign, its trajectory, or the computed risk score — all of which map back to a clinical concept that the rule-based layer can reason about and communicate.
+To support this architecture, feature engineering is intentionally constrained to a **compact set of physiologically interpretable variables (~41 features)**. These features are carefully selected to represent:
 
-Purely statistical features (PCA components, abstract embeddings, or high-dimensional transformations) would improve model metrics in isolation but would **break the interpretability bridge** between prediction and clinical explanation. The 41-feature design is an intentional architectural decision, not a limitation.
+* Core vital signs
+* Short- and long-term temporal trends (multi-scale slopes)
+* Physiological interactions (e.g., pulse pressure, combined score)
+* Clinically grounded rule-based indicators (t1, t2, t3 flags)
+* Temporal context (rolling statistics and lag-based features)
+
+Each feature maintains a **direct mapping to a clinical concept**, ensuring compatibility with the rule-based reasoning layer.
+
+In contrast, purely statistical or high-dimensional transformations (e.g., PCA, latent embeddings, or black-box feature expansions) are deliberately avoided. While such methods may improve isolated predictive performance, they **break the interpretability bridge** required for clinical deployment.
+
+Thus, the 41-feature design is not a limitation, but a **deliberate architectural constraint** that enables integration between machine learning predictions and transparent clinical reasoning.
 
 ---
 
@@ -389,7 +399,7 @@ The most clinically meaningful metric is not class-level accuracy in isolation b
 
 ```
 Emergency correctly identified as Emergency OR Critical:
-→ (1,992 + 2,041) / 4,616  ≈  87% 🔥
+→ (1,992 + 2,041) / 4,616  ≈  87% 
 ```
 
 This reflects a critical insight about the system's behavior: the model has learned that **Critical is physiologically early Emergency**. Emergency cases misclassified as Critical are not model failures — they represent the model correctly identifying severe instability while applying a more conservative severity label. In a clinical alert context, both classes trigger intervention.
@@ -407,18 +417,7 @@ This reflects a critical insight about the system's behavior: the model has lear
 
 ---
 
-## Top Predictive Features
 
-| Rank | Feature | Interpretation |
-|---|---|---|
-| 1 | `roll_max_15m_combined` | Peak instability over 15 minutes |
-| 2 | `roll_std_15m_combined` | Volatility of instability score |
-| 3 | `roll_mean_15m_combined` | Sustained average instability |
-| 4 | `slope_15m_etco2` | CO₂ trend — ventilatory trajectory |
-| 5 | `slope_15m_heart_rate` | HR trend — cardiac trajectory |
-| 6 | `pulse_pressure` | Vascular instability marker |
-
-All top features represent **physiological trajectories**, not isolated abnormal values. This validates the core design hypothesis: deterioration is a process, not a single threshold crossing.
 
 ---
 
@@ -452,10 +451,10 @@ cnn_gru_v6_outputs/
 ## Limitations
 
 - Single-center dataset — generalizability to other ICU populations is unknown
-- Critical class classification remains challenging due to its transitional physiological nature between Normal and Emergency states
+
 - Currently a research prototype, not a certified clinical product
 - Requires continuous high-frequency vital monitoring at 2-second resolution
-- Val/Test class distributions differ from training — reflects real patient variability
+
 
 ---
 
@@ -474,7 +473,6 @@ cnn_gru_v6_outputs/
 ## Dataset
 
 The master dataset used for this project is hosted on Kaggle due to GitHub file size limits.
-
-📥 [Download the dataset from Kaggle](#)
+DOWNLOAD DATASET FROM KAGGLE-https://www.kaggle.com/datasets/arjunmahesh09999/new-masterdata
 
 After downloading, place the dataset file inside the project directory before running the code.

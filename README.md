@@ -341,7 +341,7 @@ Input: (batch, 240 timesteps, 44 features)
 | Parameter | Value | Description |
 |---|---|---|
 | Window | 240 rows (8 min) | Input sequence length |
-| Stride | — | Step between windows |
+| Stride | 20 | Step between windows |
 | Train windows | 81,503 | — |
 | Val windows | 9,664 | — |
 | Test windows | 10,003 | — |

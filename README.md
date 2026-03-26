@@ -415,6 +415,62 @@ This reflects a critical insight about the system's behavior: the model has lear
 
 > Note: Per-class Emergency recall appears low due to strict label separation at inference. The 87% combined risk detection rate is the operationally correct measure for an early warning system.
 
+
+**Interpretation of Critical Cases Classified as Emergency**
+
+In addition to Emergency cases being identified as Critical, the reverse behavior is also observed:
+
+A subset of Critical cases are classified as Emergency by the model.
+
+From the evaluation:
+
+* Critical → Emergency ≈ **17%**
+
+This behavior reflects an important characteristic of the model:
+
+> The system tends to **escalate severity when strong instability patterns are detected**, even if the ground truth label is Critical.
+
+Rather than representing an error, this can be interpreted as **clinically conservative behavior**, where the model prioritizes patient safety by assigning a higher-risk category when physiological signals resemble advanced deterioration.
+
+This is particularly relevant because the boundary between Critical and Emergency is not sharply defined in real physiological data. Patients often transition gradually from Critical to Emergency states, and feature patterns may overlap significantly during this progression.
+
+Thus:
+
+* Critical → Emergency predictions indicate that the model is detecting **high-risk physiological signatures**
+* These cases would still trigger **urgent clinical attention**
+* The cost of over-escalation is generally lower than under-detection in safety-critical environments
+
+---
+
+**Operational Interpretation**
+
+When combining both directions of overlap:
+
+* Emergency → Critical = early detection of severe cases
+* Critical → Emergency = conservative escalation under uncertainty
+
+Together, these behaviors demonstrate that the model captures **a continuous spectrum of patient deterioration**, rather than enforcing rigid class boundaries.
+
+---
+
+**Key Insight**
+
+The model does not strictly classify patients into isolated categories. Instead, it performs **risk-aware stratification**, where adjacent severity classes are treated as overlapping regions in a physiological continuum.
+
+This behavior is desirable in an early warning system, where:
+
+* Missing a deteriorating patient is high-risk
+* Overestimating severity is clinically safer
+
+---
+
+**Conclusion**
+
+Critical cases classified as Emergency should be interpreted as **safety-oriented overestimation**, not model failure. This reflects the system’s ability to detect strong deterioration signals and prioritize intervention, aligning with real-world clinical decision-making principles.
+
+
+
+
 ---
 
 

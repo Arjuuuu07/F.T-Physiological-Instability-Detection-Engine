@@ -1,99 +1,138 @@
-# F.T — Physiological Instability Detection Engine
+# F.T — Flow-Threshold · Physiological Instability Detection Engine
 
-> A hybrid physiological reasoning and deep learning system for real-time ICU patient deterioration detection and prediction — up to 15 minutes in advance.
+<div align="center">
 
----
+**A hybrid clinical intelligence system combining physiological rule modeling, temporal state logic, and deep learning**  
+**for real-time ICU patient deterioration detection — up to 15 minutes before clinical failure.**
 
-## What is F.T?
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![TensorFlow](https://img.shields.io/badge/Framework-TensorFlow-orange.svg)](https://tensorflow.org)
+[![Dataset](https://img.shields.io/badge/Dataset-VitalDB-green.svg)](https://vitaldb.net/)
+[![Status](https://img.shields.io/badge/Status-Research%20Prototype-yellow.svg)]()
 
-**F.T (Flow-Threshold)** is designed to detect and predict physiological deterioration in ICU patients aged 65 and above using continuous vital sign monitoring.
-
-Rather than relying on simple alarm thresholds or pure machine learning, F.T combines four tightly integrated components:
-
-- **Medical physiology rules** — clinically grounded deterioration patterns
-- **Mathematical severity modeling** — continuous, nonlinear risk encoding
-- **Temporal state logic** — FSM-based label stabilization
-- **Deep learning prediction** — CNN-GRU trained on engineered physiological trajectories
-
-The result is a system that learns *how deterioration unfolds over time*, not just whether a value is abnormal at a single moment.
+</div>
 
 ---
 
-## Design Philosophy — Why This Is Not Just a Prediction Model
+## ⚡ What F.T Achieves
 
-**F.T is designed as a dual-purpose clinical intelligence system rather than a standalone predictive model.**
+> **"Detects ~87% of ICU deterioration cases — up to 15 minutes before clinical failure."**
 
-The learned prediction component constitutes only one layer of the system. Complementing it is a **Rule-Based Clinical Intelligence Layer** (under active development), which is responsible for:
+That number is not accuracy. It is not recall. It is the answer to the only question that matters in an early warning system:
 
-* Generating *real-time clinical alerts* with interpretable reasoning
-* Identifying the *specific physiological drivers* of patient instability
-* Explaining *why* a patient’s risk profile is evolving, rather than only reporting predictions
-* Translating model outputs into clinically meaningful, human-readable insights**
-
-To support this architecture, feature engineering is intentionally constrained to a **compact set of physiologically interpretable variables (~41 features)**. These features are carefully selected to represent:
-
-* Core vital signs
-* Short- and long-term temporal trends (multi-scale slopes)
-* Physiological interactions (e.g., pulse pressure, combined score)
-* Clinically grounded rule-based indicators (t1, t2, t3 flags)
-* Temporal context (rolling statistics and lag-based features)
-
-Each feature maintains a **direct mapping to a clinical concept**, ensuring compatibility with the rule-based reasoning layer.
-
-In contrast, purely statistical or high-dimensional transformations (e.g., PCA, latent embeddings, or black-box feature expansions) are deliberately avoided. While such methods may improve isolated predictive performance, they **break the interpretability bridge** required for clinical deployment.
-
-Thus, the 41-feature design is not a limitation, but a **deliberate architectural constraint** that enables integration between machine learning predictions and transparent clinical reasoning.
-
----
-
-## System Pipeline
+> *"When a patient is deteriorating, does the system flag it?"*
 
 ```
-Raw ICU Vital Streams  (2-second resolution)
-          ↓
-Physiological Risk Engine
-  · Threshold zone mapping
-  · Continuous abnormality encoding
-  · Nonlinear severity transformation
-  · Multi-organ risk aggregation
-          ↓
-Disease Pattern Detection
-  · Tier 1 / 2 / 3 condition activation
-  · Early deterioration ramp
-  · Condition amplification multiplier
-          ↓
-Temporal Stability Modeling (FSM)
-  · Label confirmation & state transition rules
-          ↓
-Feature Engineering
-  · Raw vitals · Slopes · Rolling stats · Scaled vitals · Condition flags
-          ↓
-Deep Learning Prediction
-  · CNN-GRU v6 (Deeper GRU + Temperature Calibration + Dual-Threshold)
-  · 3-class severity output: Normal / Critical / Emergency
-          ↓
-[Planned] Rule-Based AI Layer
-  · Real-time alerting with clinical reasoning
-  · Explicit explanation of health change drivers
+Emergency → Emergency:   2,041  ✅ Direct detection
+Emergency → Critical:    1,992  ✅ Conservative early detection  (both trigger intervention)
+Emergency → Normal:        583  ❌ Missed
+──────────────────────────────────────────────────────────────────
+Combined risk detection:  4,033 / 4,616  ≈  87%
+```
+
+Most early warning systems ask: *"Is this value out of range right now?"*  
+F.T asks: *"How is this patient's physiology evolving — and where is it heading?"*
+
+---
+
+## 🧠 Why This Is Not Just a Prediction Model
+
+F.T is designed as a **dual-purpose clinical intelligence system**, not a standalone ML model.
+
+Most ICU ML projects train a classifier and stop. F.T is architected in two integrated layers:
+
+| Layer | Role | Status |
+|---|---|---|
+| **Deep Learning Layer** | Predicts severity class (Normal / Critical / Emergency) | ✅ Complete |
+| **Rule-Based Clinical Reasoning Layer** | Explains *why* risk is changing, in human-readable clinical language | 🔧 In Development |
+
+The rule-based layer is not an afterthought — it shapes every design decision in the system. This is why:
+
+- The model uses a curated subset of **interpretable variables** — not 200+ statistical transforms
+- Black-box methods like PCA, latent embeddings, and high-dimensional expansions are **deliberately excluded** from model inputs
+- Each model feature maintains a **direct mapping to a clinical concept**
+
+The **master dataset retains all 99 features** — this is intentional. The Rule-Based Reasoning Layer (under active development) requires the full feature set to analyse physiological state in depth, identify drivers, and generate human-readable clinical explanations.
+
+The Rule-Based Layer will be responsible for:
+- Generating real-time clinical alerts with interpretable reasoning
+- Identifying the specific physiological drivers of each patient's instability
+- Explaining **why** a patient's risk profile is evolving — not just **that** it is
+- Translating model outputs into clinically meaningful, human-readable insights
+
+---
+
+## 🏗️ Full System Pipeline
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║          Raw ICU Vital Streams  (2-second resolution)            ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║                 Physiological Risk Engine                        ║
+║   · Threshold zone mapping  (Normal / Critical / Emergency)      ║
+║   · Continuous abnormality encoding   z ∈ [0, 1]                ║
+║   · Nonlinear severity transformation   severity = 2^z − 1      ║
+║   · Multi-organ risk aggregation  (8 vitals combined)            ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║                Disease Pattern Detection                         ║
+║   · 12 clinically grounded patterns across 3 tiers              ║
+║   · Early deterioration ramp  (pre-threshold warning onset)      ║
+║   · Condition amplification multiplier  (capped at 2.2×)        ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║             Temporal Stability Engine  (FSM)                     ║
+║   · Label confirmation & state transition rules                  ║
+║   · Prevents sensor-noise-driven flickering                      ║
+║   · Emergency → Normal direct transition blocked                 ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║                    Feature Engineering                           ║
+║   · 99 features retained in master dataset                       ║
+║   · Curated model input subset selected for interpretability     ║
+║   · Raw vitals · Slopes · Severity scores · Condition flags      ║
+║   · Rolling stats · Lag features                                 ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║               CNN-GRU v6  Deep Learning Model                    ║
+║   · Multi-scale Conv1D + 2-layer bidirectional GRU               ║
+║   · Attention pooling                                            ║
+║   · Temperature calibration  (T = 1.50)                          ║
+║   · Dual-threshold decision logic                                ║
+║   · Output: Normal / Critical / Emergency                        ║
+╚══════════════════════════════════════════════════════════════════╝
+                                ↓
+╔══════════════════════════════════════════════════════════════════╗
+║       [In Development]  Rule-Based Clinical Reasoning Layer      ║
+║   · Utilises full 99-feature dataset for deep state analysis     ║
+║   · Real-time alerts with explicit physiological explanations    ║
+║   · Identifies which vitals and patterns drive each label        ║
+╚══════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
-## Dataset
+## 📊 Dataset
 
-**Source:** VitalDB ICU Dataset
+**Source:** [VitalDB ICU Dataset](https://vitaldb.net/)
 
 | Property | Value |
 |---|---|
-| Patients | **381 ICU patients** |
-| Age | ≥ 60 years & < 80 years |
-| Monitoring | Continuous vital sign streams |
+| Patients | 381 ICU patients |
+| Age Range | ≥ 60 years and < 80 years |
+| Monitoring type | Continuous vital sign streams |
 | Resolution | 2-second intervals |
 | Total rows | ~2,378,857 |
 
-This forms a high-resolution geriatric ICU physiological stream dataset at real clinical scale.
+This forms a **high-resolution geriatric ICU physiological stream dataset** at real clinical scale.
 
-**Target distribution (`future_label`):**
+**Target label distribution (`future_label`):**
 
 | Class | Label | Share |
 |---|---|---|
@@ -103,7 +142,7 @@ This forms a high-resolution geriatric ICU physiological stream dataset at real 
 
 ---
 
-## Vital Signals
+## 🫀 Input Vital Signals
 
 ### Primary Inputs
 
@@ -111,23 +150,28 @@ This forms a high-resolution geriatric ICU physiological stream dataset at real 
 |---|---|---|
 | SpO₂ | `spo2` | Oxygen saturation |
 | Heart Rate | `heart_rate` | Pulse rate (bpm) |
-| Respiratory Rate | `resp_rate_smoothed` | RR with rolling smoothing applied |
+| Respiratory Rate | `resp_rate` | Direct monitor signal |
 | Systolic BP | `sbp` | Systolic blood pressure |
 | Diastolic BP | `dbp` | Diastolic blood pressure |
+| Mean BP | `mbp` | Direct monitor signal — not derived |
 | End-Tidal CO₂ | `etco2` | Ventilatory CO₂ marker |
 
-> Raw `resp_rate` is excluded. Only `resp_rate_smoothed` is used to reduce sensor noise.
-
-### Derived Signals (treated as first-class features)
+### Derived Signals
 
 ```
-Pulse Pressure  =  SBP − DBP
-MBP             =  (SBP + 2 × DBP) / 3
+Pulse Pressure      =  SBP − DBP
+resp_rate_smoothed  =  rolling_mean(resp_rate, window)
 ```
+
+`resp_rate` is a direct input vital. However, raw RR from ICU monitors has high oscillation due to sensor noise. `resp_rate_smoothed` is created by applying a rolling average to suppress this noise — it is used throughout the feature pipeline and model inputs in place of raw RR.
+
+`mbp` is a direct monitor signal. It is not computed as `(SBP + 2×DBP) / 3` — the monitor outputs it directly, so the raw signal is used as-is.
+
+`pulse_pressure` is treated as a first-class feature throughout the system.
 
 ---
 
-## Physiological Risk Engine
+## ⚙️ Physiological Risk Engine
 
 ### Step 1 — Threshold Zone Mapping
 
@@ -139,7 +183,7 @@ Each vital is divided into three clinical risk zones:
 | Critical | Significant abnormality |
 | Emergency | Severe instability |
 
-**Full threshold table:**
+**Full clinical threshold reference table:**
 
 | Vital | Normal | Critical | Emergency |
 |---|---|---|---|
@@ -160,15 +204,15 @@ Each vital is divided into three clinical risk zones:
 
 ### Step 2 — Continuous Abnormality Encoding
 
-Rather than binary zone membership, each vital is mapped to a continuous score `z ∈ [0, 1]`:
+Rather than binary zone membership, each vital is mapped to a **continuous score z ∈ [0, 1]**:
 
 ```
-z = 0.0  →  Normal (no abnormality)
+z = 0.0  →  Normal           (no abnormality)
 z = 0.5  →  Critical boundary
 z = 1.0  →  Emergency boundary
 ```
 
-This models gradual physiological deterioration rather than abrupt threshold jumps.
+This models **gradual physiological deterioration** rather than abrupt threshold jumps — because real deterioration is gradual.
 
 ### Step 3 — Nonlinear Severity Transformation
 
@@ -182,86 +226,100 @@ severity = 2^z − 1
 | 0.5 | 0.41 |
 | 1.0 | 1.00 |
 
-Severity grows faster near emergency levels, reflecting the nonlinear escalation of clinical risk.
+Severity accelerates near emergency levels — reflecting the **nonlinear escalation of clinical risk** that happens in real physiology. A patient moving from z=0.5 to z=1.0 is not twice as sick; they are approaching a physiological cliff.
 
 ### Step 4 — Multi-Organ Risk Aggregation
 
 ```
-severity_sum = Σ severity_i  (across all 8 vital signs)
+severity_sum = Σ severity_i   (across all 8 vital signs)
 ```
 
-This captures both single severe abnormalities and multiple concurrent mild abnormalities — modeling cumulative multi-organ physiological stress.
+This captures two distinct clinical scenarios simultaneously:
+- A **single severe abnormality** — one vital in emergency territory
+- **Multiple concurrent mild abnormalities** — multi-organ physiological stress accumulating across systems
 
 ---
 
-## Disease Pattern Modeling
+## 🔬 Disease Pattern Modeling
 
 F.T encodes **12 clinically meaningful deterioration patterns** across three tiers.
+
+Unlike threshold alarms that check single vitals in isolation, these patterns capture **physiological combinations** — the way real clinical instability actually presents.
 
 ### Tier 1 — Major Instability
 
 | Pattern | Trigger | Clinical Meaning |
 |---|---|---|
-| Shock Spiral | MBP < 70 AND HR > 100 | Low perfusion with compensatory tachycardia |
-| Respiratory Burnout | SpO₂ < 92 AND RR > 22 | Oxygen failure with increased respiratory effort |
-| Hypercapnic Failure | ETCO₂ > 50 AND RR < 10 | Ventilatory failure with CO₂ retention |
+| **Shock Spiral** | MBP < 70 AND HR > 100 | Low perfusion with compensatory tachycardia |
+| **Respiratory Burnout** | SpO₂ < 92 AND RR > 22 | Oxygen failure with increased respiratory effort |
+| **Hypercapnic Failure** | ETCO₂ > 50 AND RR < 10 | Ventilatory failure with CO₂ retention |
 
 ### Tier 2 — Moderate Risk
 
 | Pattern | Trigger |
 |---|---|
-| Pulse Pressure Low | Pulse Pressure ≤ 30 |
-| Wide PP + High SBP | Pulse Pressure ≥ 70 AND SBP ≥ 170 |
-| Respiratory-Hemodynamic Combo | SpO₂ < 92 AND RR > 22 AND HR > 100 |
+| **Pulse Pressure Low** | Pulse Pressure ≤ 30 |
+| **Wide PP + High SBP** | Pulse Pressure ≥ 70 AND SBP ≥ 170 |
+| **Respiratory-Hemodynamic Combo** | SpO₂ < 92 AND RR > 22 AND HR > 100 |
 
 ### Tier 3 — Subtle / Hidden Risk
 
-| Pattern | Trigger |
-|---|---|
-| Hypertensive Emergency | SBP ≥ 180 AND Pulse Pressure ≥ 70 |
-| Stable Deceiver | SpO₂ 92–94 AND HR 75–90 AND MBP 65–70 |
-| Masked Shock | MBP 65–72 AND HR < 90 (perfusion decline without tachycardia) |
-| Occult Acidosis | ETCO₂ ≤ 32 AND RR ≥ 24 AND SpO₂ 88–92 |
-| Trend Decline | Simultaneous adverse point-to-point changes in ETCO₂, SpO₂, HR |
-| Trend Activate | Slope-based sustained deterioration across 5–7 minute windows |
+These are the most dangerous patterns — they can appear stable superficially while masking serious underlying deterioration.
+
+| Pattern | Trigger | Why It's Dangerous |
+|---|---|---|
+| **Hypertensive Emergency** | SBP ≥ 180 AND Pulse Pressure ≥ 70 | Extreme pressure with wide pulse |
+| **Stable Deceiver** | SpO₂ 92–94 AND HR 75–90 AND MBP 65–70 | Acceptable-looking vitals hiding early circulatory failure |
+| **Masked Shock** | MBP 65–72 AND HR < 90 | Perfusion decline *without* compensatory tachycardia — easy to miss |
+| **Occult Acidosis** | ETCO₂ ≤ 32 AND RR ≥ 24 AND SpO₂ 88–92 | Metabolic distress below overt alarm values |
+| **Trend Decline** | Simultaneous adverse point-to-point changes in ETCO₂, SpO₂, HR | Coordinated multi-vital drift |
+| **Trend Activate** | Slope-based sustained deterioration across 5–7 minute windows | Trajectory-level signal before any threshold is crossed |
 
 ### Early Deterioration Ramp
 
-Detection begins before thresholds are crossed:
+Warning signals begin **before thresholds are crossed**:
 
 ```
 early_start = threshold − 20% × (threshold − normal_reference)
 ```
 
-This allows warning signals to develop before full clinical failure.
+This is what enables the 15-minute early warning. The model accumulates signal from the early ramp — it does not wait for threshold breach to start responding.
 
 ### Condition Amplification
 
-Active conditions amplify the final instability score:
+When deterioration patterns activate, they amplify the final instability score:
 
 ```
 final_score = severity_sum × M_eff
 M_eff = 1 + A × (target_multiplier − 1)
 ```
 
-Where `A` is the condition activation strength (0–1) and multipliers are capped at 2.2 to prevent runaway escalation.
+Where:
+- `A` = condition activation strength (continuous, range 0–1)
+- Multipliers are **capped at 2.2** to prevent runaway escalation from stacked conditions
 
 ---
 
-## Temporal Stability Engine
+## 🔁 Temporal Stability Engine (FSM)
 
-A **Finite State Machine (FSM)** prevents label flickering caused by noisy vital sign data.
+A **Finite State Machine** prevents label flickering caused by noisy vital sign data.
 
-Key rules:
+In real ICU settings, sensor artifacts can cause a vital to spike momentarily without any physiological change. Without this layer, those spikes produce false alarms and erode clinical trust in the system.
 
-- 15 consecutive identical states required to confirm a label change
-- Emergency → Normal direct transition is blocked
-- Mixed Critical / Emergency states collapse to Critical
-- Downgrades require sustained recovery — not a single normal reading
+**FSM rules:**
 
-This ensures state transitions reflect genuine physiological change, not sensor artifacts.
+| Rule | Detail |
+|---|---|
+| Confirmation threshold | **15 consecutive identical states** required to confirm a label change |
+| Emergency → Normal | Direct transition is **blocked** — must pass through Critical first |
+| Mixed state handling | Mixed Critical / Emergency states collapse to **Critical** |
+| Downgrade policy | Requires **sustained recovery** — not a single normal reading |
 
-### Severity Classification
+State transitions reflect genuine physiological change, not sensor noise.
+
+---
+
+## 🎯 Severity Classification
 
 ```
 final_score < 0.75            →  ✅ Normal
@@ -271,76 +329,90 @@ final_score ≥ 1.5             →  🚨 Emergency
 
 ---
 
-## Feature Engineering
+## 🧮 Feature Engineering
 
-Temporal deterioration patterns are captured through **41 engineered features** across six categories.
+F.T separates two concerns: the **master dataset** (full analytical coverage, 99 features) and the **model input set** (curated subset for interpretable, clinically deployable prediction).
 
-These features are not arbitrary — each maps directly to a physiological concept that the Rule-Based AI layer can reason about and explain. This interpretability constraint is a core design requirement of the system.
-
-### Raw Vitals (8)
-`dbp · mbp · heart_rate · sbp · spo2 · etco2 · pulse_pressure · resp_rate_smoothed`
-
-### Scaled Vitals (8)
-Physiologically scaled versions of all 8 vitals:
-`s_spo2 · s_hr · s_rr · s_sbp · s_dbp · s_mbp · s_etco2 · s_pp`
-
-### Vital Slopes (16)
-OLS slopes for all 8 vitals across 2 time windows:
-
-| Window | Row Count | Trend Scope |
-|---|---|---|
-| 7m | 210 rows | Medium-term trend |
-| 15m | 450 rows | Sustained trajectory |
-
-Example: `slope_7m_spo2 · slope_15m_heart_rate · slope_7m_mbp · slope_15m_etco2`
-
-### Combined Score Slopes (2)
-`slope_7m_combined_score · slope_15m_combined_score`
-
-### Rolling Statistics (6)
-Computed over `combined_score`:
-
-| Feature | Windows |
-|---|---|
-| `roll_mean_{w}_combined` | 7m, 15m |
-| `roll_std_{w}_combined` | 7m, 15m |
-| `roll_min_15m_combined` | 15m only |
-| `roll_max_15m_combined` | 15m only |
-
-### Physiological Instability Score (1)
-`combined_score` — the output of the risk engine — used directly as a model feature.
+> **Design principle:** Every model input maps directly to a physiological concept. High-dimensional or black-box transformations are deliberately excluded from model inputs. The full 99-feature master dataset is preserved for the Rule-Based Reasoning Layer, which needs the complete temporal and pattern context to generate clinical explanations.
 
 ---
 
-## Deep Learning Model — CNN-GRU v6
+### Master Dataset — 99 Features
+
+| Category | Count | Features |
+|---|---|---|
+| **Identifiers** | 2 | `patient_id` · `time` |
+| **Raw Vitals** | 9 | `dbp` · `mbp` · `heart_rate` · `resp_rate` · `sbp` · `spo2` · `etco2` · `pulse_pressure` · `resp_rate_smoothed` |
+| **Vital Slopes (2m, 5m, 7m, 15m)** | 32 | OLS slope for each of 8 vitals (`spo2` · `heart_rate` · `resp_rate_smoothed` · `sbp` · `dbp` · `mbp` · `etco2` · `pulse_pressure`) across 4 time horizons |
+| **Continuous Abnormality Scores** | 8 | `z_spo2` · `z_hr` · `z_rr` · `z_sbp` · `z_dbp` · `z_mbp` · `z_etco2` · `z_pp` |
+| **Scaled Severity Scores** | 8 | `s_spo2` · `s_hr` · `s_rr` · `s_sbp` · `s_dbp` · `s_mbp` · `s_etco2` · `s_pp` |
+| **Physiological Instability Scores** | 2 | `severity_sum` · `combined_score` |
+| **Disease Pattern Flags** | 12 | `t1_shock_spiral` · `t1_resp_burnout` · `t1_hypercapnic` · `t2_pulse_pressure_low` · `t2_widepp_highsbp` · `t2_resp_hemo_combo` · `t3_hyper_emergency` · `t3_stable_deceiver` · `t3_masked_shock` · `t3_occult_acidosis` · `t3_trend_decline` · `t3_trend_activate` |
+| **Combined Score Slopes (2m, 5m, 7m, 15m)** | 4 | `slope_2m_combined_score` · `slope_5m_combined_score` · `slope_7m_combined_score` · `slope_15m_combined_score` |
+| **Rolling Statistics (2m, 5m, 7m, 15m)** | 10 | `roll_mean_2m_combined` · `roll_std_2m_combined` · `roll_mean_5m_combined` · `roll_std_5m_combined` · `roll_mean_7m_combined` · `roll_std_7m_combined` · `roll_mean_15m_combined` · `roll_std_15m_combined` · `roll_min_15m_combined` · `roll_max_15m_combined` |
+| **Lag Features (15m lookback)** | 9 | `lag_15m_spo2` · `lag_15m_heart_rate` · `lag_15m_resp_rate_smoothed` · `lag_15m_sbp` · `lag_15m_dbp` · `lag_15m_mbp` · `lag_15m_etco2` · `lag_15m_pulse_pressure` · `lag_15m_combined_score` |
+| **Labels** | 3 | `severity_label` · `result_label` · `future_label` |
+
+---
+
+### Model Input Features
+
+The CNN-GRU v6 model uses the following features selected from the master dataset. Every feature has a direct physiological interpretation.
+
+| Category | Features |
+|---|---|
+| **Raw Vitals** | `dbp` · `mbp` · `heart_rate` · `sbp` · `spo2` · `etco2` · `pulse_pressure` · `resp_rate_smoothed` |
+| **Scaled Severity Scores** | `s_spo2` · `s_hr` · `s_rr` · `s_sbp` · `s_dbp` · `s_mbp` · `s_etco2` · `s_pp` |
+| **Vital Slopes (5m, 7m, 15m)** | `slope_{5m/7m/15m}_{spo2/heart_rate/resp_rate_smoothed/sbp/dbp/mbp/etco2/pulse_pressure}` — 24 features |
+| **Combined Score Slopes (all windows)** | `slope_2m_combined_score` · `slope_5m_combined_score` · `slope_7m_combined_score` · `slope_15m_combined_score` |
+| **Rolling Statistics & Score** | `combined_score` · `roll_mean_15m_combined` · `roll_min_15m_combined` · `roll_max_15m_combined` · `roll_std_15m_combined` |
+| **Targeted Pattern Flags** | `t3_masked_shock` · `t3_stable_deceiver` · `t3_occult_acidosis` |
+
+The 2m vital slopes, z-scores, full pattern flag set, shorter-window rolling stats, and lag features are retained in the master dataset for the Rule-Based Reasoning Layer but excluded from model inputs.
+
+---
+
+### Vital Slopes — Time Windows
+
+| Window | Trend Scope | In Model | In Master Dataset |
+|---|---|---|---|
+| 2 minutes | Short-term spike detection | ❌ (combined score only) | ✅ |
+| 5 minutes | Near-term trend | ✅ | ✅ |
+| 7 minutes | Medium-term trend | ✅ | ✅ |
+| 15 minutes | Sustained trajectory | ✅ | ✅ |
+
+---
+
+## 🤖 Deep Learning Model — CNN-GRU v6
 
 ### Architecture
 
-A deeper GRU-augmented CNN with temperature calibration and dual-threshold decision logic:
-
 ```
-Input: (batch, 240 timesteps, 44 features)
-         ↓
+Input: (batch, 240 timesteps, n_features)   ← 8-minute window at 2s resolution
+          ↓
   Multi-scale Conv1D feature extraction
-         ↓
-  GRU layers (deeper temporal modeling)
-         ↓
-  Temperature scaling (T = 1.50, calibrated on val set)
-         ↓
+  (kernel sizes 7 → 5 → 3, channels 48 → 72 → 72)
+          ↓
+  2-layer bidirectional GRU  (hidden=48, output=96)
+          ↓
+  Attention pooling
+          ↓
+  Temperature scaling  (T = 1.50, calibrated on validation set)
+          ↓
   Dual-threshold decision logic
   · t_critical  = 0.40
   · t_emergency = 0.28
-         ↓
-  Output: 3-class severity (Normal / Critical / Emergency)
-```
+          ↓
+  Output: 3-class severity  (Normal / Critical / Emergency)
 
-**Total parameters:** 136,292
+Total parameters: 136,292
+```
 
 ### Window Configuration
 
 | Parameter | Value | Description |
 |---|---|---|
-| Window | 240 rows (8 min) | Input sequence length |
+| Window length | 240 rows (8 min) | Input sequence length |
 | Stride | 20 | Step between windows |
 | Train windows | 81,503 | — |
 | Val windows | 9,664 | — |
@@ -350,34 +422,37 @@ Input: (batch, 240 timesteps, 44 features)
 
 | Parameter | Value |
 |---|---|
-| Optimizer | Adam |
+| Optimizer | AdamW |
 | Batch size | 256 |
 | Max epochs | 60 (early stopped at epoch 21) |
-| Loss | Sparse categorical crossentropy |
-| Class balancing | Weighted sampling |
+| Loss function | Cross-entropy with label smoothing (0.02) |
+| Class balancing | Asymmetric weighted sampling (Critical ×1.5, Emergency ×1.2) |
 | Post-hoc calibration | Temperature scaling (T = 1.4997) |
 | Decision logic | Dual-threshold sweep (optimized on val set) |
 
 ### Train / Val / Test Split — Patient Level
 
-| Split | Windows | Class Distribution |
-|---|---|---|
-| Train | 81,503 | N=33,069 C=16,599 E=31,835 |
-| Val | 9,664 | N=3,419 C=2,269 E=3,976 |
-| Test | 10,003 | N=3,078 C=2,309 E=4,616 |
+| Split | Windows | Normal | Critical | Emergency |
+|---|---|---|---|---|
+| Train | 81,503 | 33,069 | 16,599 | 31,835 |
+| Val | 9,664 | 3,419 | 2,269 | 3,976 |
+| Test | 10,003 | 3,078 | 2,309 | 4,616 |
 
 ---
 
-## Model Performance
+## 📈 Model Performance
 
-### Test Results
+### Summary Metrics
 
 | Metric | Value |
 |---|---|
-| **Test AUROC** | **0.7260** |
+| **Risk Detection Rate** (Emergency flagged as Critical or Emergency) | **~87%** |
+| Test AUROC | 0.7260 |
 | AUPRC | 0.5615 |
 | Balanced Accuracy | 0.52 |
 | Accuracy | 0.53 |
+
+### Per-Class Breakdown
 
 | Class | Precision | Recall | F1 | Support |
 |---|---|---|---|---|
@@ -385,155 +460,142 @@ Input: (batch, 240 timesteps, 44 features)
 | Critical (1) | 0.31 | 0.61 | 0.41 | 2,309 |
 | Emergency (2) | 0.79 | 0.49 | 0.60 | 4,616 |
 
-**Test confusion matrix:**
+### Test Confusion Matrix
 
 | | Pred-Normal | Pred-Critical | Pred-Emergency |
 |---|---|---|---|
-| True-Normal | 1,816 | 895 | 367 |
-| True-Critical | 648 | 1,219 | 442 |
-| True-Emergency | 583 | 1,992 | 2,041 |
+| **True-Normal** | 1,816 | 895 | 367 |
+| **True-Critical** | 648 | 1,219 | 442 |
+| **True-Emergency** | 583 | 1,992 | 2,041 |
 
-### Key Result — Risk Detection Rate
+---
 
-The most clinically meaningful metric is not class-level accuracy in isolation but **combined deterioration detection**:
+## 🔍 Understanding the Results
+
+### Why per-class Emergency recall (0.44) is not the right metric
+
+Strict label-level recall counts only Emergency→Emergency predictions. But in clinical use, any flag — Critical or Emergency — triggers bedside attention. Measuring only exact label matches underestimates real clinical utility.
 
 ```
-Emergency correctly identified as Emergency OR Critical:
-→ (1,992 + 2,041) / 4,616  ≈  87% 
+Strict Emergency recall:   0.44   (Emergency → Emergency only)
+Clinical recall:           0.87   (Emergency → Critical or Emergency)
 ```
 
-This reflects a critical insight about the system's behavior: the model has learned that **Critical is physiologically early Emergency**. Emergency cases misclassified as Critical are not model failures — they represent the model correctly identifying severe instability while applying a more conservative severity label. In a clinical alert context, both classes trigger intervention.
+The 87% number is the **operationally correct measure** for an early warning system.
 
-**True clinical performance summary:**
+### Emergency → Critical: Conservative Early Detection (Not a Failure)
 
-| Metric | Value |
+Emergency cases predicted as Critical are not errors. They represent:
+- Genuine physiological instability detected
+- A conservative severity label applied
+- A clinical alert that still fires and triggers intervention
+
+The model has learned that **Critical is physiologically early Emergency** — patients do not jump to emergency states, they transition through them. Predicting a severe patient as Critical reflects this temporal understanding.
+
+### Critical → Emergency: Safety-Oriented Escalation
+
+Approximately **17% of Critical cases are classified as Emergency** by the model.
+
+This happens because the model detects strong instability signatures even when ground truth is Critical. In a safety-critical environment:
+
+> **The cost of over-escalation is lower than the cost of missing a deteriorating patient.**
+
+This is desirable behavior — clinical conservatism, not model error.
+
+### Key Insight — Risk-Aware Stratification
+
+The model does not enforce rigid class boundaries. Instead it performs **risk-aware stratification** where adjacent severity classes are treated as overlapping regions in a physiological continuum.
+
+| Overlap Direction | Clinical Interpretation |
 |---|---|
-| Critical recall | 0.53 |
-| Emergency recall | 0.44 |
-| **Risk detection (Critical + Emergency combined)** | **~87%** |
-| Test AUROC | **0.7260** |
+| Emergency → Critical | Early detection: severe case caught before full emergency |
+| Critical → Emergency | Conservative escalation: model prioritizes safety |
 
-> Note: Per-class Emergency recall appears low due to strict label separation at inference. The 87% combined risk detection rate is the operationally correct measure for an early warning system.
-
-
-**Interpretation of Critical Cases Classified as Emergency**
-
-In addition to Emergency cases being identified as Critical, the reverse behavior is also observed:
-
-A subset of Critical cases are classified as Emergency by the model.
-
-From the evaluation:
-
-* Critical → Emergency ≈ **17%**
-
-This behavior reflects an important characteristic of the model:
-
-> The system tends to **escalate severity when strong instability patterns are detected**, even if the ground truth label is Critical.
-
-Rather than representing an error, this can be interpreted as **clinically conservative behavior**, where the model prioritizes patient safety by assigning a higher-risk category when physiological signals resemble advanced deterioration.
-
-This is particularly relevant because the boundary between Critical and Emergency is not sharply defined in real physiological data. Patients often transition gradually from Critical to Emergency states, and feature patterns may overlap significantly during this progression.
-
-Thus:
-
-* Critical → Emergency predictions indicate that the model is detecting **high-risk physiological signatures**
-* These cases would still trigger **urgent clinical attention**
-* The cost of over-escalation is generally lower than under-detection in safety-critical environments
+Together: the model captures deterioration as a **spectrum**, not discrete steps — which is exactly how ICU physiology behaves.
 
 ---
 
-**Operational Interpretation**
-
-When combining both directions of overlap:
-
-* Emergency → Critical = early detection of severe cases
-* Critical → Emergency = conservative escalation under uncertainty
-
-Together, these behaviors demonstrate that the model captures **a continuous spectrum of patient deterioration**, rather than enforcing rigid class boundaries.
-
----
-
-**Key Insight**
-
-The model does not strictly classify patients into isolated categories. Instead, it performs **risk-aware stratification**, where adjacent severity classes are treated as overlapping regions in a physiological continuum.
-
-This behavior is desirable in an early warning system, where:
-
-* Missing a deteriorating patient is high-risk
-* Overestimating severity is clinically safer
-
----
-
-**Conclusion**
-
-Critical cases classified as Emergency should be interpreted as **safety-oriented overestimation**, not model failure. This reflects the system’s ability to detect strong deterioration signals and prioritize intervention, aligning with real-world clinical decision-making principles.
-
-
-
-
----
-
-
-
----
-
-## Repository Structure
+## 🗂️ Repository Structure
 
 ```
 ├── catevcode.py                  # Physiological risk engine & feature pipeline
-├── cnn_gru_v6_training.py        # Feature engineering & CNN-GRU training
-└── README.md
-
-cnn_gru_v6_outputs/
-├── model weights                 # Trained model
-├── scaler & metadata             # Normalisation artifacts
-├── evaluation report             # Full classification report
-├── training curves               # Loss / accuracy history
-├── confusion matrices            # Val and test confusion matrices
+├── cnn_gru_v6_training.py        # Feature engineering & CNN-GRU v6 training
+├── README.md
+│
+└── cnn_gru_v6_outputs/
+    ├── model_weights/            # Trained model (.h5 / SavedModel format)
+    ├── scaler_metadata/          # Normalisation artifacts (.pkl)
+    ├── evaluation_report/        # Full classification report
+    ├── training_curves/          # Loss / accuracy history plots
+    └── confusion_matrices/       # Val and test confusion matrix visualizations
 ```
 
 ---
 
-## Applications
+## 📥 Dataset Download
+
+The master dataset is hosted on Kaggle due to GitHub file size limits.
+
+| Dataset | Description | Link |
+|---|---|---|
+| **Initial Dataset** | Raw data before cleaning | [Download from Kaggle](https://www.kaggle.com/datasets/arjunmahesh09999/before-cleaning) |
+| **Master Dataset** | Processed, cleaned, 99-feature dataset | [Download from Kaggle](https://www.kaggle.com/datasets/arjunmahesh09999/new-masterdata) |
+
+After downloading, place the dataset file in the **project root directory** before running any scripts.
+
+---
+
+## 💡 Applications
 
 - ICU early warning and real-time deterioration monitoring
 - Clinical decision support with explicit physiological reasoning
 - Multi-organ failure detection research
-- Physiological instability modeling and dataset construction
+- Physiological instability modeling and high-resolution dataset construction
 - Rule-based AI integration for bedside alert explanation
+- Research foundation for geriatric ICU physiological stream analysis
 
 ---
 
-## Limitations
+## 🗺️ Planned Extensions
 
-- Single-center dataset — generalizability to other ICU populations is unknown
-
-- Currently a research prototype, not a certified clinical product
-- Requires continuous high-frequency vital monitoring at 2-second resolution
-
-
----
-
-## Planned Extensions
-
-- [ ] **Rule-Based AI Layer** — Real-time alerting engine that identifies which specific vital signs, patterns, and trajectories are driving each severity classification, and communicates exact clinical reasoning to bedside staff
+- [ ] **Rule-Based Clinical Reasoning Layer** — Real-time alerting engine that utilises the full 99-feature dataset to identify which specific vital signs, patterns, and trajectories are driving each severity classification, and communicates exact clinical reasoning to bedside staff
 - [ ] **Score Fluctuation Analysis** — Studying `combined_score` trajectories: instability oscillation patterns, transition velocities, and physiological drivers behind score variance
-- [ ] Validation on larger, multi-hospital datasets
-- [ ] Transformer / LSTM time-series models
+- [ ] Validation on larger, multi-hospital datasets (generalizability study)
+- [ ] Transformer / attention-based time-series architecture exploration
+- [ ] LSTM architecture comparison study
 - [ ] Real-time ICU deployment pipeline
 - [ ] Prospective clinical validation study
-- [ ] Extension to broader ICU age groups
+- [ ] Extension to broader ICU age groups (below 60 and above 80)
 
 ---
 
-## Dataset
+## ⚠️ Limitations
 
-The master dataset used for this project is hosted on Kaggle due to GitHub file size limits.
+| Limitation | Detail |
+|---|---|
+| Single-center data | Trained on one dataset — generalizability to other ICU populations or hospital settings is unknown |
+| Research prototype | Not a certified clinical product — requires prospective validation before any clinical use |
+| Hardware dependency | Requires continuous high-frequency vital monitoring at 2-second resolution |
+| Label boundary ambiguity | Critical / Emergency boundary is not sharply defined in real physiological data — some label overlap is inherent in the ground truth itself |
 
-BECAUSE of github datasize limitation  issue i uploaded the datsets in kaggle.
+---
 
-please DOWNLOAD INITIAL DATASET -https://www.kaggle.com/datasets/arjunmahesh09999/before-cleaning
+## 📋 Quick Reference
 
-please DOWNLOAD MASTER_DATASET -https://www.kaggle.com/datasets/arjunmahesh09999/new-masterdata
+| Property | Value |
+|---|---|
+| Target population | ICU patients aged 60–80 |
+| Input vitals | SpO₂, HR, RR, SBP, DBP, MBP, ETCO₂, Pulse Pressure |
+| Data resolution | 2-second intervals |
+| Prediction window | 8-min input → up to 15 min early warning |
+| Severity classes | Normal / Critical / Emergency |
+| Master dataset features | 99 |
+| Model architecture | CNN-GRU v6 (136,292 parameters) |
+| Risk detection rate | ~87% |
+| Test AUROC | 0.7260 |
 
-After downloading, place the dataset file inside the project directory before running the code.
+---
+
+<div align="center">
+<sub>F.T is a research prototype. Not intended for direct clinical use without prospective validation and regulatory clearance.</sub>
+</div>

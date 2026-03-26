@@ -518,11 +518,11 @@ Together: the model captures deterioration as a **spectrum**, not discrete steps
 ## 🗂️ Repository Structure
 
 ```
-├── catevcode.py                  # Physiological risk engine & feature pipeline
-├── cnn_gru_v6_training.py        # Feature engineering & CNN-GRU v6 training
+├── cleaning.ipynb                  # Physiological risk engine & feature pipeline
+├── cnn_gru_training.py        # Feature engineering & CNN-GRU v6 training
 ├── README.md
 │
-└── cnn_gru_v6_outputs/
+└── cnn_gru_v_outputs/
     ├── model_weights/            # Trained model (.h5 / SavedModel format)
     ├── scaler_metadata/          # Normalisation artifacts (.pkl)
     ├── evaluation_report/        # Full classification report

@@ -1,6 +1,6 @@
 # F.T — Flow of Trajectory · Physiological Instability Detection Engine
 
-A time-aware clinical intelligence system for real-time ICU deterioration detection — combining physiological rule modelling, temporal state logic, and deep learning to flag patient instability **up to 15 minutes before clinical failure**.
+A time-aware clinical intelligence system for real-time ICU deterioration detection trained in 2.3M dataset — combining physiological rule modelling, temporal state logic, and deep learning to flag patient instability **up to 15 minutes before clinical failure**.
 
 Built on the [VitalDB](https://vitaldb.net/) dataset, which provides high-resolution physiological signals recorded during surgical procedures — including continuously monitored vital parameters such as heart rate, blood pressure, respiratory rate, oxygen saturation,and end-tidal CO₂.
 

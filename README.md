@@ -620,11 +620,12 @@ Lag snapshot (15m ago): Found
 ## 🗂️ Repository Structure
 
 ```
-├── cleaning.ipynb                  # Physiological risk engine & feature pipeline
-├── cnn_gru_2.py                    # Feature engineering & CNN-GRU  training
-├── RULE_BASED_AI.ipynb       # Rule-Based Clinical Reasoning Layer
-├── README.md
-│
+├cleaning.ipynb                    # Physiological risk engine & feature pipeline
+├ cnn_gru_2.py                     # Feature engineering & CNN-GRU  training
+├ RULE_BASED_AI.ipynb              # Rule-Based Clinical Reasoning Layer
+├ README.md
+|-news-2                           # labeling by news and comparison
+|-tiew combination                  # tier explanation
     
 
 ```

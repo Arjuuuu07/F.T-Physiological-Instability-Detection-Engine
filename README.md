@@ -468,21 +468,30 @@ F.T's Tier 3 patterns are specifically designed to catch instability that NEWS2 
 
 ---
 
-## 🔎 Rule-Based Clinical Reasoning Layer
+# Rule-Based Explainable AI Layer — Clinical Vital Sign Monitoring
 
-Overview
-Modern clinical AI models often produce risk scores without explaining why — a barrier to trust and adoption in medical settings. This layer solves that by adding a fully transparent, logic-driven explainability pipeline on top of any severity prediction model.
+A deterministic, rule-based clinical reasoning engine that runs alongside a machine-learning prediction model to provide **human-readable, stage-by-stage explanations** for every patient time point. Built on a 99-feature master dataset, it generates structured clinical reports without relying on black-box inference.
+
+---
+
+## Overview
+
+Modern clinical AI models often produce risk scores without explaining *why* — a barrier to trust and adoption in medical settings. This layer solves that by adding a fully transparent, logic-driven explainability pipeline on top of any severity prediction model.
+
 For each patient snapshot it:
+- Confirms or challenges the model's severity label using deterministic rules
+- Flags which specific vitals crossed which thresholds
+- Detects multi-vital clinical pattern combinations (e.g. sepsis-like, shock-like presentations)
+- Warns about monotonic deterioration trends and impossible/noisy sensor values
+- Identifies early recovery signals across multiple time windows
 
-Confirms or challenges the model's severity label using deterministic rules
-Flags which specific vitals crossed which thresholds
-Detects multi-vital clinical pattern combinations (e.g. sepsis-like, shock-like presentations)
-Warns about monotonic deterioration trends and impossible/noisy sensor values
-Identifies early recovery signals across multiple time windows
+---
 
 
 
-Architecture — 5-Stage Pipeline
+## Architecture — 5-Stage Pipeline
+
+```
 Patient Snapshot (patient_id + time)
         │
         ▼
@@ -520,39 +529,74 @@ Patient Snapshot (patient_id + time)
         │
         ▼
   Final Summary Report
+```
 
-Stage Details
-Stage 1 — System Labels
-Displays the raw model severity (severity_label) alongside the FSM-confirmed label (result_label) and the combined risk score. Provides immediate at-a-glance label comparison.
-Stage 2 — FSM Mismatch Explanation
-Uses a Finite State Machine (FSM) that evaluates the last 15 readings to determine whether a severity is transient or sustained.
+---
 
-Agreement (both Emergency / both Critical / both Normal): Explains the agreement and its clinical implication.
-Disagreement: Explains why the FSM may have upgraded or downgraded the raw label — e.g., a brief spike that did not persist will not be confirmed by the FSM.
+## Stage Details
 
-Stage 3 — Vital Sign Analysis
-Step A — Emergency Threshold Triggers
+### Stage 1 — System Labels
+Displays the raw model severity (`severity_label`) alongside the FSM-confirmed label (`result_label`) and the combined risk score. Provides immediate at-a-glance label comparison.
+
+### Stage 2 — FSM Mismatch Explanation
+Uses a **Finite State Machine (FSM)** that evaluates the last 15 readings to determine whether a severity is transient or sustained.
+
+- **Agreement** (both Emergency / both Critical / both Normal): Explains the agreement and its clinical implication.
+- **Disagreement**: Explains *why* the FSM may have upgraded or downgraded the raw label — e.g., a brief spike that did not persist will not be confirmed by the FSM.
+
+### Stage 3 — Vital Sign Analysis
+
+**Step A — Emergency Threshold Triggers**
 Each vital is checked against a 3-tier threshold system:
-VitalThresholds (Normal / Critical / Emergency)SpO₂< 95 / < 92 / < 90 %Heart Rate (low)< 60 / < 50 / < 45 bpmHeart Rate (high)> 90 / > 110 / > 120 bpmRespiratory Rate (low)< 12 / < 10 / < 8 br/minRespiratory Rate (high)> 20 / > 25 / > 30 br/minSBP (low)< 110 / < 100 / < 90 mmHgSBP (high)> 150 / > 170 / > 185 mmHgDBP (low)< 60 / < 55 / < 50 mmHgDBP (high)> 85 / > 95 / > 100 mmHgMAP< 70 / < 65 / < 60 mmHgEtCO₂ (low)< 35 / < 30 / < 25 mmHgEtCO₂ (high)> 45 / > 50 / > 55 mmHgPulse Pressure (low)< 45 / < 35 mmHg
+
+| Vital | Thresholds (Normal / Critical / Emergency) |
+|---|---|
+| SpO₂ | < 95 / < 92 / < 90 % |
+| Heart Rate (low) | < 60 / < 50 / < 45 bpm |
+| Heart Rate (high) | > 90 / > 110 / > 120 bpm |
+| Respiratory Rate (low) | < 12 / < 10 / < 8 br/min |
+| Respiratory Rate (high) | > 20 / > 25 / > 30 br/min |
+| SBP (low) | < 110 / < 100 / < 90 mmHg |
+| SBP (high) | > 150 / > 170 / > 185 mmHg |
+| DBP (low) | < 60 / < 55 / < 50 mmHg |
+| DBP (high) | > 85 / > 95 / > 100 mmHg |
+| MAP | < 70 / < 65 / < 60 mmHg |
+| EtCO₂ (low) | < 35 / < 30 / < 25 mmHg |
+| EtCO₂ (high) | > 45 / > 50 / > 55 mmHg |
+| Pulse Pressure (low) | < 45 / < 35 mmHg |
+
 Each triggered vital displays its current value, its status tier, and a plain-English clinical note.
-Step B — Active Clinical Pattern Conditions
-Flags multi-vital combinations that are clinically significant in combination (e.g., simultaneous low MAP + high RR + low SBP suggesting shock). These are defined in CONDITION_FACTOR_SPECS.
-Step C — All Out-of-Range Vitals
+
+**Step B — Active Clinical Pattern Conditions**
+Flags multi-vital combinations that are clinically significant in combination (e.g., simultaneous low MAP + high RR + low SBP suggesting shock). These are defined in `CONDITION_FACTOR_SPECS`.
+
+**Step C — All Out-of-Range Vitals**
 A comprehensive list of every vital not within normal limits, regardless of whether it crossed the emergency boundary.
-Stage 4 — Trend & Noise Warnings
-Warning 1 — Monotonic Slope Detection
-Checks lag vital columns across four time windows (lag_15m, lag_7m, lag_5m, lag_2m). If a vital shows a continuous monotonic worsening trend across all four windows, a deterioration warning is raised.
-Warning 2 — Impossible Value / Signal Noise Check
+
+### Stage 4 — Trend & Noise Warnings
+
+**Warning 1 — Monotonic Slope Detection**
+Checks lag vital columns across four time windows (`lag_15m`, `lag_7m`, `lag_5m`, `lag_2m`). If a vital shows a continuous monotonic worsening trend across all four windows, a deterioration warning is raised.
+
+**Warning 2 — Impossible Value / Signal Noise Check**
 Validates vitals against absolute physiological limits (e.g., HR of 0 or 300 bpm). Values outside these bounds are flagged as sensor artefacts or data errors.
-Stage 5 — Recovery Detection
+
+### Stage 5 — Recovery Detection
 For each previously abnormal vital, checks whether the slope across all lag windows shows a consistent return toward normal range. Requires a 15-minute lag snapshot to be available for comparison.
 
-Usage
-Configuration
-pythonTARGET_PATIENT_ID = 64    # Patient ID to inspect
+---
+
+## Usage
+
+### Configuration
+```python
+TARGET_PATIENT_ID = 64    # Patient ID to inspect
 TARGET_TIME       = 3600  # Time in seconds (3600 = 60 min)
-Running the Pipeline
-python# Load data
+```
+
+### Running the Pipeline
+```python
+# Load data
 df = pd.read_csv("MASTERDATA.csv")
 
 # Extract snapshots
@@ -566,13 +610,22 @@ stage_3(current_stat)
 stage_4(current_stat)
 stage_5(current_stat, past_stat)
 final_report(current_stat, past_stat)
-Dependencies
+```
+
+### Dependencies
+```
 numpy
 pandas
+```
 No ML frameworks required — the rule-based layer is fully deterministic.
 
-Output Format
+---
+
+## Output Format
+
 The output is a structured, bordered text report rendered directly in the notebook console. Example excerpt:
+
+```
 ═════════════════════════════════════════════════════════════════
      RULE-BASED EXPLAINABLE AI LAYER — PATIENT VITAL ANALYSIS
 ═════════════════════════════════════════════════════════════════
@@ -584,14 +637,23 @@ The output is a structured, bordered text report rendered directly in the notebo
   Patient Current Condition  : Emergency   (severity_label)
   System Confirmed Condition : Emergency   (result_label)
 ...
+```
 
-Key Design Decisions
-Why rule-based alongside ML?
+---
+
+## Key Design Decisions
+
+**Why rule-based alongside ML?**
 The ML model produces a combined risk score but its reasoning is opaque. The rule-based layer ensures every output can be traced to a specific vital, threshold, and clinical rationale — essential for clinical staff to act on.
-Why a Finite State Machine for label confirmation?
+
+**Why a Finite State Machine for label confirmation?**
 Transient spikes (a single high reading) should not trigger emergency alerts. The FSM evaluates a 15-reading window to confirm sustained deterioration before locking in the confirmed label.
-Why multi-window trend analysis?
-A single slope (e.g., 15m→now) can be misleading if the trend reversed. Checking across four nested windows (15m → 7m → 5m → 2m) ensures that only genuinely accelerating or continuous trends are flagged.
+
+**Why multi-window trend analysis?**
+A single slope (e.g., 15m→now) can be misleading if the trend reversed. Checking across four nested windows (`15m → 7m → 5m → 2m`) ensures that only genuinely accelerating or continuous trends are flagged.
+
+---
+
 
 ### Example Output
 

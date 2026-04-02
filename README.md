@@ -673,7 +673,7 @@ After downloading, place the dataset file in the project root directory before r
 
 | Limitation | Detail |
 |---|---|
-| Low Critical class precision | Precision of 0.30 on the Critical class reflects inherent label boundary ambiguity — Critical and Emergency states overlap physiologically, and the ground truth labels carry this ambiguity. The system is intentionally tuned toward recall (catching deteriorating patients) at the cost of precision. |
+| Low Critical class precision | Precision of   the Critical class reflects inherent label boundary ambiguity — Critical and Emergency states overlap physiologically, and the ground truth labels carry this ambiguity. The system is intentionally tuned toward recall (catching deteriorating patients) at the cost of precision. |
 | Single-center data | Trained on one dataset — generalizability to other ICU populations or hospital settings is unknown |
 | No clinical validation | This is a research prototype. It has not been prospectively validated in a clinical environment and is not a certified medical device |
 | Intraoperative context | VitalDB captures surgical/perioperative monitoring; dynamics may differ from general ICU populations |

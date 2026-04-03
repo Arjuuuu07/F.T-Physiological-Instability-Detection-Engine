@@ -837,8 +837,8 @@ final_report(current_stat, past_stat)
 
 | Dataset | Description | Link |
 |---|---|---|
-| Initial Dataset | Raw data before cleaning | Download from Kaggle |
-| Master Dataset | Processed, 99-feature dataset | Download from Kaggle |
+| Initial Dataset | Raw data before cleaning | https://www.kaggle.com/datasets/arjunmahesh09999/before-cleaning |
+| Master Dataset | Processed, 99-feature dataset | https://www.kaggle.com/datasets/arjunmahesh09999/new-masterdata |
 
 ---
 

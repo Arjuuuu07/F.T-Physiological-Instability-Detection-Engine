@@ -340,7 +340,75 @@ EXTRA_T3 = 1.10     # Additional factor when a Tier 3 pattern is active
 MULTIPLIER_CAP = 2.2   # Hard cap — prevents runaway escalation when multiple patterns co-activate
 
 combined_score = severity_sum × min(condition_multiplier, MULTIPLIER_CAP)
+
+
 ```
+why this number-
+The base curve 
+2^x−1 reaches 1 at x = 1
+With 1.4672 scaling:
+1.4672(2^0.75-1)~1
+
+✔️ Meaning:
+The same critical severity level is reached at x ≈ 0.75 instead of 1
+This creates ~25% earlier escalation
+Models rapid physiological deterioration in Tier 1 & 2 conditions
+
+👉 Interpretation:
+High-risk conditions are made to escalate faster than natural progression
+Mild scaling compared to 1.4672
+Reaches severity = 1 around
+x~0.8 to 0.9
+✔️ Meaning:
+Only slight acceleration (~19%)
+Keeps progression close to natural curve
+Captures subtle or hidden instability without over-triggering
+
+👉 Interpretation:
+Tier 3 conditions progress, but not aggressively
+
+. Early ramp (0.20)
+
+Physiological deterioration is gradual, not binary. Clinical states begin to manifest before formal thresholds are crossed.
+
+A 20% early ramp allows partial activation when a vital is approaching its pathological limit.
+It ensures:
+Smooth transition from 0 → 1 activation
+Capturing pre-threshold instability
+Justification:
+< 0.1 → too insensitive (misses early warning)
+> 0.3 → too aggressive (causes premature triggering)
+0.2 provides a balanced onset of activation
+
+Additionally, the ramp only contributes when other vitals already meet condition criteria, preserving clinical validity.
+Extra multipliers (1.3, 1.2, 1.1)
+
+These model multi-condition interaction severity:
+
+Tier 1 → +30% amplification
+Tier 2 → +20% amplification
+Tier 3 → +10% amplification
+
+This reflects:
+
+Severe conditions dominate risk amplification
+Mild patterns contribute incrementally
+
+Only the top two impactful patterns are used to:
+
+Avoid over-counting noise
+Maintain clinical interpretability
+
+ Multiplier cap (2.2)-
+
+Prevents runaway escalation when multiple patterns co-activate.
+
+Ensures system remains:
+Stable
+Clinically realistic
+Avoids false emergency inflation
+
+
 
 Tier 3 carries a lower base (1.19 vs 1.4672) because Tier 3 patterns represent clinically significant but not acutely life-threatening instability. Over-amplifying subtle presentations would produce false emergencies for what are still early-stage warning signals.
 

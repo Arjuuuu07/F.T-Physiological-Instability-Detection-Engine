@@ -788,7 +788,7 @@ The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and 
 ```
 ├── cleaning.ipynb          # Full pipeline: cleaning → feature engineering → labelling
 ├── RULE_BASED_AI.ipynb     # Rule-Based Clinical Reasoning Layer (all 5 stages)
-├── cnn_gru_v9.py           # Feature engineering & CNN-GRU v9 binary training
+├── cnn_gru_3.py            # Feature engineering & CNN-GRU v9 binary training
 ├── README.md
 ├── news-2/                 # NEWS2 labelling and comparison analysis
 └── tier_combination/       # Tier pattern explanation and documentation

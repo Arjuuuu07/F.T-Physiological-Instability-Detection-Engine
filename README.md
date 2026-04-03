@@ -27,14 +27,9 @@ Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiologica
 16. [Binary Performance Analysis](#16-binary-performance-analysis--normal-vs-at-risk)
 
 ---
-***why this system***-
-*Detects vital sign changes over time, not just single values
-*Captures gradual (linear) deterioration trends
-*Filters noise and random fluctuations in ICU data
-*Identifies multi-level severity patterns (Normal → Critical → Emergency)
-*Learns hidden clinical conditions from combined vitals
-*15 minute ahead prediction
-* ***most importently*** it  Provides clear explanations for why a patient is marked At-Risk 
+
+<img width="960" height="1104" alt="why_this_system_dark" src="https://github.com/user-attachments/assets/c505f15a-a9a7-43b9-bcb4-e3283d518ff9" />
+
 
 
 ## 1. What F.T Does — Three Core Purposes

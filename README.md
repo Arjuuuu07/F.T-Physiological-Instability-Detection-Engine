@@ -15,7 +15,7 @@ Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiologica
 4. [System Architecture](#4-full-system-architecture)
 5. [Dataset & Input Signals](#5-dataset--input-signals)
 6. [Dataset Pipeline](#6-dataset-pipeline--how-the-master-dataset-is-built)
-7. [Purpose 1 — Real-Time Severity Classification](#7-purpose-1--real-time-severity-classification)
+7. [Purpose 1 - Severity Classification](#7-purpose-1--real-time-severity-classification)
 8. [Purpose 2 — Rule-Based Explainability Layer](#8-purpose-2--rule-based-explainability-layer)
 9. [Purpose 3 — 15-Minute Ahead Prediction](#9-purpose-3--15-minute-ahead-deterioration-prediction)
 10. [Feature Engineering](#10-feature-engineering)
@@ -472,9 +472,9 @@ After both trims, every row has a valid `future_label`, a complete 15-minute lag
 
 ---
 
-## 7. Purpose 1 — Real-Time Severity Classification
+## 7. Purpose 1 —  Severity Classification
 
-The scoring pipeline from Section 6 (Steps 6–7) produces `combined_score` in real time. The FSM below converts that score into a stable, clinically actionable severity label.
+The scoring pipeline from Section 6 (Steps 6–7) produces `combined_score` . The FSM below converts that score into a stable, clinically actionable severity label.
 
 ### Temporal Stability Engine — Hierarchical FSM
 

@@ -4,10 +4,11 @@
 > A time-aware clinical intelligence system for real-time ICU deterioration detection — combining physiological rule modelling, temporal state logic, and deep learning to flag patient instability up to 15 minutes before clinical failure.
 
 Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiological signals from 381 surgical/ICU patients, recorded at 2-second intervals.
-nb
+
 ---
-DISCLAIMER
-This system is intended exclusively for individuals aged 60 to 80 years. It has been developed with features, content, and accessibility standards suited to this specific age group. This system is not intended for other age groups.
+<img width="1440" height="680" alt="image" src="https://github.com/user-attachments/assets/76fdcc45-f232-4073-803e-062c036f44cf" />
+
+---
 
 ## Table of Contents
 

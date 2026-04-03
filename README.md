@@ -794,6 +794,40 @@ Splits are patient-level, not row-level, to prevent data leakage. A patient appe
 
 Critical class precision (0.30) reflects inherent label boundary ambiguity — Critical and Emergency overlap physiologically, and ground truth labels carry uncertainty at this boundary. The system is intentionally tuned toward recall: a false alarm is far less costly than a missed deterioration.
 
+## 16. Binary Performance Analysis — Normal vs Abnormal
+When Critical and Emergency classes are merged into a single **Abnormal** label, the system is evaluated as a binary detector: does it catch deteriorating patients?
+### Confusion Matrix (Binary)
+
+| | Pred Normal | Pred Abnormal |
+|---|---|---|
+| **True Normal** | 890 (TN) | 1,219 (FP) |
+| **True Abnormal** | 286 (FN) | 4,735 (TP) |
+
+> Abnormal = Critical + Emergency combined. True Abnormal = 5,021 windows (70.4% of test set).
+### Binary Metrics
+
+| Metric | Value | Formula |
+|---|---|---|
+| Precision | 0.795 | TP / (TP + FP) |
+| Recall (Sensitivity) | 0.943 | TP / (TP + FN) |
+| Specificity | 0.422 | TN / (TN + FP) |
+| F1 Score | 0.863 | 2 × Precision × Recall / (Precision + Recall) |
+| Accuracy | 0.796 | (TP + TN) / Total |
+| NPV | 0.757 | TN / (TN + FN) |
+| Miss Rate (FNR) | 0.057 | FN / (TP + FN) |
+| AUROC (Binary) | 0.799 | Reported metric |
+
+### What These Numbers Mean
+
+**Recall of 0.943** — Only 286 out of 5,021 truly abnormal windows were missed. The system successfully flags 94.3% of all deteriorating patient windows — the most important metric for an early warning system.
+
+**Specificity of 0.422** — When a patient is genuinely stable, the system still raises an alert 57.8% of the time. This is an expected consequence of the recall-first design: F.T is intentionally tuned so that a missed deterioration is penalised far more heavily than a false alarm.
+
+**Miss Rate of 5.7%** — 286 windows where the system predicted Normal but the patient was abnormal. These are the clinically consequential failures and the primary target for future improvement.
+
+**F1 of 0.863** — Interpreted with caution given class imbalance (70.4% of test set is Abnormal). A naive classifier predicting Abnormal for every window achieves F1 ≈ 0.82, making the effective learned gain approximately +0.04 above that baseline.
+
+
 ---
 
 ## 10. Feature Engineering

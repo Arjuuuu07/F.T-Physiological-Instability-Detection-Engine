@@ -343,7 +343,10 @@ combined_score = severity_sum × min(condition_multiplier, MULTIPLIER_CAP)
 
 
 ```
-why this number-
+***why this number***
+
+**1.46&1.19**-
+
 The base curve 
 2^x−1 reaches 1 at x = 1
 With 1.4672 scaling:
@@ -367,7 +370,7 @@ Captures subtle or hidden instability without over-triggering
 👉 Interpretation:
 Tier 3 conditions progress, but not aggressively
 
-. Early ramp (0.20)
+**Early ramp (0.20)**-
 
 Physiological deterioration is gradual, not binary. Clinical states begin to manifest before formal thresholds are crossed.
 
@@ -381,7 +384,8 @@ Justification:
 0.2 provides a balanced onset of activation
 
 Additionally, the ramp only contributes when other vitals already meet condition criteria, preserving clinical validity.
-Extra multipliers (1.3, 1.2, 1.1)
+
+**Extra multipliers (1.3, 1.2, 1.1)**-
 
 These model multi-condition interaction severity:
 
@@ -399,7 +403,7 @@ Only the top two impactful patterns are used to:
 Avoid over-counting noise
 Maintain clinical interpretability
 
- Multiplier cap (2.2)-
+**Multiplier cap (2.2)**-
 
 Prevents runaway escalation when multiple patterns co-activate.
 

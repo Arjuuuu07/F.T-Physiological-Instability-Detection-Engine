@@ -1,7 +1,7 @@
 # F.T — Flow of Trajectory
 ### Physiological Instability Detection Engine
 
-> *A time-aware clinical intelligence system for real-time ICU deterioration detection — combining physiological rule modelling, temporal state logic, and deep learning to flag patient instability up to 15 minutes before clinical failure.*
+> A time-aware clinical intelligence system for real-time ICU deterioration detection — combining physiological rule modelling, temporal state logic, and deep learning to flag patient instability up to 15 minutes before clinical failure.
 
 Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiological signals from 381 surgical/ICU patients, recorded at 2-second intervals.
 
@@ -24,6 +24,7 @@ Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiologica
 13. [Limitations](#13-limitations)
 14. [Planned Extensions](#14-planned-extensions)
 15. [Quick Reference](#15-quick-reference)
+16. [Binary Performance Analysis](#16-binary-performance-analysis--normal-vs-at-risk)
 
 ---
 
@@ -44,8 +45,9 @@ F.T is not a single model. It is a layered clinical intelligence system with thr
 │            │  back to specific vitals, thresholds, and patterns      │
 ├─────────────────────────────────────────────────────────────────────┤
 │  PURPOSE 3 │  15-Minute Ahead Deterioration Prediction               │
-│            │  A deep learning model (CNN-GRU v7) trained to predict  │
-│            │  severity class 15 minutes into the future, enabling    │
+│            │  A deep learning model (CNN-GRU v9) trained to predict  │
+│            │  whether a patient is Normal or At-Risk (Critical +     │
+│            │  Emergency) 15 minutes into the future, enabling        │
 │            │  pre-emptive clinical intervention                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -56,32 +58,44 @@ Each layer is independently useful. Together, they form a complete early warning
 
 ## 2. Performance at a Glance
 
+| Metric | Value |
+|---|---|
+| **Binary AUROC** (Normal vs At-Risk) | **0.8008** |
+| **AUPRC** | **0.8945** |
+| **Balanced Accuracy** | **0.7143** |
+| **Sensitivity** (At-Risk Recall) | **0.8265** |
+| **Specificity** (Normal Recall) | **0.6022** |
+| **F1 Score** (At-Risk) | **0.8255** |
+| **Precision** (At-Risk) | **0.8244** |
+| Model Parameters | 389,091 |
+| Prediction Horizon | ~15 minutes ahead |
+| Input Resolution | 2-second vital streams |
+| Decision Threshold | 0.4849 (Youden strategy) |
+| Temperature Scaling | T = 1.4846 |
+
+### What Do These Numbers Mean?
+
+This is a **binary early warning system** — at every moment, it answers one question:
+
+> *"Is this patient heading toward deterioration in the next 15 minutes?"*
+
+The system classifies each patient window as **Normal** or **At-Risk** (merging Critical and Emergency into a single actionable alert class).
+
+**Sensitivity of 0.8265** — the system correctly flags **82.65%** of all genuinely deteriorating patient windows. Out of 4,767 truly At-Risk windows in the test set, 3,940 were correctly identified and 827 were missed.
+
+**AUPRC of 0.8945** — in a clinically imbalanced dataset where At-Risk patients outnumber Normal ones (~69% of test windows), an AUPRC close to 0.90 reflects strong discrimination across all operating thresholds.
+
+**Specificity of 0.6022** — when a patient is genuinely stable, the system raises an alert approximately 40% of the time. This is an expected consequence of the **recall-first design**: F.T is intentionally tuned so that a missed deterioration is penalised far more heavily than a false alarm.
+
+**Test Confusion Matrix:**
+
 ```
-Emergency Detection Rate           ~94%
-Binary AUROC (Normal vs At-Risk)   0.7987
-Test AUROC                         0.7234
-AUPRC                              0.5654
-Balanced Accuracy                  0.53
-Model Parameters                   275,396
-Prediction Horizon                 ~15 minutes ahead
-Input Resolution                   2-second vital streams
+               Pred Normal   Pred At-Risk
+True Normal :      1270           839
+True At-Risk:       827          3940
+
+  TP = 3940   FP = 839   TN = 1270   FN = 827
 ```
-
-### What Does 94% Actually Mean?
-
-This is not accuracy. It is not recall. It is the answer to the only question that matters in an early warning system:
-
-> **"When a patient is deteriorating — does the system flag it?"**
-
-```
-Emergency → Emergency    1,757  ✅  Direct detection
-Emergency → Critical     1,646  ✅  Conservative early detection (still triggers intervention)
-Emergency → Missed          71  ❌  Missed
-──────────────────────────────────────────────────────
-Clinical detection rate   3,403 / 3,474  ≈  94%
-```
-
-When the model labels a deteriorating patient as **Critical** instead of **Emergency**, that is not an error — it is **conservative early detection**. The alert still fires. The clinician is still called. Both labels trigger intervention; only one is penalised by conventional metrics.
 
 ---
 
@@ -108,7 +122,7 @@ F.T was benchmarked against a modified NEWS2 implementation adapted for VitalDB'
 | Result Match | 60.86% (33,323 rows) |
 | Exact Match (Both) | 54.10% (29,618 rows) |
 
-The ~54% exact match is **expected and informative**. It reflects the fundamental difference in philosophy: NEWS2 asks *"Is this patient currently outside normal bounds?"* — F.T asks *"Is this patient's trajectory heading toward failure?"*
+The ~54% exact match is expected and informative. It reflects the fundamental difference in philosophy: NEWS2 asks *"Is this patient currently outside normal bounds?"* — F.T asks *"Is this patient's trajectory heading toward failure?"*
 
 ### What NEWS2 Structurally Cannot See
 
@@ -118,7 +132,7 @@ F.T's Tier 3 patterns detect instability that is invisible to any single-vital s
 - **Masked Shock** — MBP 65–72, HR < 90: perfusion decline without the compensatory tachycardia that would normally raise an alarm
 - **Occult Acidosis** — ETCO₂ ≤ 32, RR ≥ 24, SpO₂ 88–92: metabolic distress where each individual vital sits just below any single-vital alert threshold
 
-> **F.T does not replace NEWS2. It extends it** — adding early and hidden instability detection, multi-parameter physiological interaction modelling, and time-consistent severity estimation.
+F.T does not replace NEWS2. It extends it — adding early and hidden instability detection, multi-parameter physiological interaction modelling, and time-consistent severity estimation.
 
 ---
 
@@ -165,15 +179,16 @@ F.T's Tier 3 patterns detect instability that is invisible to any single-vital s
 ║   · severity_label  — raw score → class                         ║
 ║   · result_label    — FSM-confirmed class                        ║
 ║   · future_label    — result_label shifted 450 rows (= 15 min)  ║
+║   · binary_future_label — 0=Normal, 1=Critical+Emergency         ║
 ╚══════════════════════════════════════════════════════════════════╝
                                 ↓
                     ┌───────────┴───────────┐
                     ↓                       ↓
 ╔══════════════════════╗     ╔══════════════════════════════════╗
 ║  PURPOSE 1 & 2       ║     ║  PURPOSE 3                       ║
-║  Real-Time Severity  ║     ║  Feature Engineering (99 feats)  ║
-║  + Rule-Based XAI    ║     ║  → CNN-GRU v7 Deep Learning      ║
-║                      ║     ║  → 15-Min Ahead Prediction       ║
+║  Real-Time Severity  ║     ║  Feature Engineering (44 feats)  ║
+║  + Rule-Based XAI    ║     ║  → CNN-GRU v9 Deep Learning      ║
+║                      ║     ║  → 15-Min Ahead Binary Prediction ║
 ╚══════════════════════╝     ╚══════════════════════════════════╝
 ```
 
@@ -193,13 +208,13 @@ F.T's Tier 3 patterns detect instability that is invisible to any single-vital s
 
 | Signal | Column | Raw Monitor Code | Notes |
 |---|---|---|---|
-| SpO₂ | `spo2` | `Solar8000/PLETH_SPO2` | Oxygen saturation |
-| Heart Rate | `heart_rate` | `Solar8000/HR` | Pulse rate (bpm) |
-| Respiratory Rate | `resp_rate` | `Solar8000/RR` | Smoothed before use; raw column retained |
-| Systolic BP | `sbp` | `Solar8000/ART_SBP` | Arterial line transducer |
-| Diastolic BP | `dbp` | `Solar8000/ART_DBP` | Arterial line transducer |
-| Mean BP | `mbp` | `Solar8000/ART_MBP` | Direct monitor output — **not** derived as (SBP+2×DBP)/3 |
-| End-Tidal CO₂ | `etco2` | `Solar8000/ETCO2` | Ventilatory CO₂ marker |
+| SpO₂ | `spo2` | Solar8000/PLETH_SPO2 | Oxygen saturation |
+| Heart Rate | `heart_rate` | Solar8000/HR | Pulse rate (bpm) |
+| Respiratory Rate | `resp_rate` | Solar8000/RR | Smoothed before use; raw column retained |
+| Systolic BP | `sbp` | Solar8000/ART_SBP | Arterial line transducer |
+| Diastolic BP | `dbp` | Solar8000/ART_DBP | Arterial line transducer |
+| Mean BP | `mbp` | Solar8000/ART_MBP | Direct monitor output — not derived as (SBP+2×DBP)/3 |
+| End-Tidal CO₂ | `etco2` | Solar8000/ETCO2 | Ventilatory CO₂ marker |
 | Pulse Pressure | `pulse_pressure` | Derived: SBP − DBP | First-class feature, not a helper variable |
 
 ### Target Label Distribution (`future_label`)
@@ -209,6 +224,13 @@ F.T's Tier 3 patterns detect instability that is invisible to any single-vital s
 | 0 | Normal | ~40% |
 | 1 | Critical | ~20% |
 | 2 | Emergency | ~40% |
+
+### Binary Label Distribution (`binary_future_label`)
+
+| Class | Label | Count |
+|---|---|---|
+| 0 | Normal | 867,307 |
+| 1 | At-Risk (Critical + Emergency) | 1,511,550 |
 
 ---
 
@@ -222,7 +244,7 @@ All rows are sorted by `patient_id` then `time` ascending. This ensures temporal
 
 ### Step 2 — Unnamed Column Removal and Time-NaN Dropping
 
-`Unnamed:` index columns from intermediate CSV writes are removed. Rows where `time` itself is `NaN` are dropped — these represent monitor entries with no temporal anchor and cannot be placed in the signal stream.
+`Unnamed:` index columns from intermediate CSV writes are removed. Rows where `time` itself is NaN are dropped — these represent monitor entries with no temporal anchor and cannot be placed in the signal stream.
 
 ### Step 3 — Pulse Pressure Derivation
 
@@ -230,7 +252,7 @@ All rows are sorted by `patient_id` then `time` ascending. This ensures temporal
 df["pulse_pressure"] = df["sbp"] - df["dbp"]
 ```
 
-Pulse pressure is not a direct Solar8000 output. It is derived as SBP − DBP and treated as a **first-class physiological feature** throughout the entire system. Its low and wide extremes signal distinct clinical states — stroke volume deficit, vascular stiffness, tamponade — that SBP and DBP individually cannot surface.
+Pulse pressure is not a direct Solar8000 output. It is derived as SBP − DBP and treated as a first-class physiological feature throughout the entire system. Its low and wide extremes signal distinct clinical states — stroke volume deficit, vascular stiffness, tamponade — that SBP and DBP individually cannot surface.
 
 ### Step 4 — Missing Value Imputation
 
@@ -243,7 +265,7 @@ df[vital_cols] = (
 )
 ```
 
-Strategy: **per-patient forward-fill, then backward-fill.** Monitors drop samples during probe reattachment, cable disconnections, or momentary artefacts — the last known reading is the best clinical approximation. Forward-fill covers mid-record gaps; backward-fill handles NaN rows at the start of a patient record. Grouping by `patient_id` ensures no patient's gaps are filled with another patient's values.
+**Strategy:** per-patient forward-fill, then backward-fill. Monitors drop samples during probe reattachment, cable disconnections, or momentary artefacts — the last known reading is the best clinical approximation. Forward-fill covers mid-record gaps; backward-fill handles NaN rows at the start of a patient record. Grouping by `patient_id` ensures no patient's gaps are filled with another patient's values.
 
 ### Step 5 — Respiratory Rate Smoothing
 
@@ -257,7 +279,7 @@ Respiratory rate is the noisiest of the eight vitals due to natural inter-breath
 
 For each of the 8 vitals (using `resp_rate_smoothed` for RR), the pipeline computes a continuous abnormality score, transforms it nonlinearly, then aggregates across organs.
 
-**Threshold zones** — three clinical risk zones per vital:
+**Threshold zones — three clinical risk zones per vital:**
 
 | Vital | Normal | Critical | Emergency |
 |---|---|---|---|
@@ -286,9 +308,9 @@ VITAL_DIRECTION = {
 # All others default to "both" — they have explicit _low and _high keys
 ```
 
-**Continuous abnormality score `z ∈ [0, 1]`** — rather than binary zone membership, each vital maps to a continuous score interpolated between boundaries. The ramp begins 20% before the formal threshold to encode sub-threshold deterioration:
+**Continuous abnormality score z ∈ [0, 1]** — rather than binary zone membership, each vital maps to a continuous score interpolated between boundaries. The ramp begins 20% before the formal threshold to encode sub-threshold deterioration:
 
-```python
+```
 EARLY_FRAC = 0.20
 early_start = threshold − 0.20 × (threshold − normal_reference)
 
@@ -296,8 +318,6 @@ z = 0.0  →  Normal
 z = 0.5  →  Critical boundary
 z = 1.0  →  Emergency boundary
 ```
-
-For example: if a pattern threshold is MBP < 70 with a normal reference of 90, the ramp begins at MBP = 74. The vital accumulates score before crossing the clinical line.
 
 **Nonlinear severity transformation:**
 
@@ -323,7 +343,7 @@ This simultaneously handles two distinct clinical presentations: a single severe
 
 ### Step 7 — Disease Pattern Detection and Condition Multipliers
 
-The 12 clinical patterns are evaluated per row. Each active pattern computes a continuous **condition multiplier** that amplifies the `combined_score` — going beyond a binary flag.
+The 12 clinical patterns are evaluated per row. Each active pattern computes a continuous condition multiplier that amplifies the `combined_score` — going beyond a binary flag.
 
 A component vital must exceed `MIN_COND_ACTIVATION = 0.20` on its z-score to contribute to the pattern factor. The same 20% early ramp applies, so patterns begin partially activating before their formal trigger is fully met.
 
@@ -340,85 +360,21 @@ EXTRA_T3 = 1.10     # Additional factor when a Tier 3 pattern is active
 MULTIPLIER_CAP = 2.2   # Hard cap — prevents runaway escalation when multiple patterns co-activate
 
 combined_score = severity_sum × min(condition_multiplier, MULTIPLIER_CAP)
-
-
 ```
-***why this number***
 
-**1.46&1.19**-
+**Why these numbers:**
 
-The base curve 
-2^x−1 reaches 1 at x = 1
-With 1.4672 scaling:
-1.4672(2^0.75-1)~1
+**1.4672 & 1.19** — The base curve 2^x−1 reaches 1 at x = 1. With 1.4672 scaling: `1.4672 × (2^0.75 − 1) ≈ 1`. This means the same critical severity level is reached at x ≈ 0.75 instead of 1, creating ~25% earlier escalation, modelling rapid physiological deterioration in Tier 1 & 2 conditions. For Tier 3, 1.19 provides mild scaling (~19%), keeping progression close to the natural curve and capturing subtle or hidden instability without over-triggering.
 
-✔️ Meaning:
-The same critical severity level is reached at x ≈ 0.75 instead of 1
-This creates ~25% earlier escalation
-Models rapid physiological deterioration in Tier 1 & 2 conditions
+**Early ramp (0.20)** — Physiological deterioration is gradual, not binary. Clinical states begin to manifest before formal thresholds are crossed. A 20% early ramp allows partial activation when a vital is approaching its pathological limit. Values < 0.1 are too insensitive (misses early warning); 0.3 is too aggressive (causes premature triggering); 0.2 provides a balanced onset of activation.
 
-👉 Interpretation:
-High-risk conditions are made to escalate faster than natural progression
-Mild scaling compared to 1.4672
-Reaches severity = 1 around
-x~0.8 to 0.9
-✔️ Meaning:
-Only slight acceleration (~19%)
-Keeps progression close to natural curve
-Captures subtle or hidden instability without over-triggering
+**Extra multipliers (1.3, 1.2, 1.1)** — These model multi-condition interaction severity: Tier 1 → +30% amplification, Tier 2 → +20%, Tier 3 → +10%. Only the top two impactful patterns are used to avoid over-counting noise and maintain clinical interpretability.
 
-👉 Interpretation:
-Tier 3 conditions progress, but not aggressively
-
-**Early ramp (0.20)**-
-
-Physiological deterioration is gradual, not binary. Clinical states begin to manifest before formal thresholds are crossed.
-
-A 20% early ramp allows partial activation when a vital is approaching its pathological limit.
-It ensures:
-Smooth transition from 0 → 1 activation
-Capturing pre-threshold instability
-Justification:
-< 0.1 → too insensitive (misses early warning)
-> 0.3 → too aggressive (causes premature triggering)
-0.2 provides a balanced onset of activation
-
-Additionally, the ramp only contributes when other vitals already meet condition criteria, preserving clinical validity.
-
-**Extra multipliers (1.3, 1.2, 1.1)**-
-
-These model multi-condition interaction severity:
-
-Tier 1 → +30% amplification
-Tier 2 → +20% amplification
-Tier 3 → +10% amplification
-
-This reflects:
-
-Severe conditions dominate risk amplification
-Mild patterns contribute incrementally
-
-Only the top two impactful patterns are used to:
-
-Avoid over-counting noise
-Maintain clinical interpretability
-
-**Multiplier cap (2.2)**-
-
-Prevents runaway escalation when multiple patterns co-activate.
-
-Ensures system remains:
-Stable
-Clinically realistic
-Avoids false emergency inflation
-
-
-
-Tier 3 carries a lower base (1.19 vs 1.4672) because Tier 3 patterns represent clinically significant but not acutely life-threatening instability. Over-amplifying subtle presentations would produce false emergencies for what are still early-stage warning signals.
+**Multiplier cap (2.2)** — Prevents runaway escalation when multiple patterns co-activate. Ensures system remains stable, clinically realistic, and avoids false emergency inflation.
 
 **The 12 patterns:**
 
-*Tier 1 — Major Instability*
+**Tier 1 — Major Instability**
 
 | Pattern | Vitals | Thresholds | Normal Refs | Clinical Meaning |
 |---|---|---|---|---|
@@ -426,7 +382,7 @@ Tier 3 carries a lower base (1.19 vs 1.4672) because Tier 3 patterns represent c
 | Respiratory Burnout | SpO₂ ↓, RR ↑ | SpO₂ < 92, RR > 22 | 98, 16 | Oxygen failure with increased respiratory effort |
 | Hypercapnic Failure | ETCO₂ ↑, RR ↓ | ETCO₂ > 50, RR < 10 | 40, 16 | Ventilatory failure with CO₂ retention |
 
-*Tier 2 — Moderate Risk*
+**Tier 2 — Moderate Risk**
 
 | Pattern | Vitals | Thresholds | Normal Refs |
 |---|---|---|---|
@@ -434,7 +390,7 @@ Tier 3 carries a lower base (1.19 vs 1.4672) because Tier 3 patterns represent c
 | Wide PP + High SBP | PP ↑, SBP ↑ | PP > 70, SBP > 170 | 50, 120 |
 | Respiratory-Haemodynamic Combo | SpO₂ ↓, RR ↑, HR ↑ | SpO₂ < 92, RR > 22, HR > 100 | 98, 16, 75 |
 
-*Tier 3 — Subtle / Hidden Risk (the patterns NEWS2 cannot see)*
+**Tier 3 — Subtle / Hidden Risk (the patterns NEWS2 cannot see)**
 
 | Pattern | Vitals | Thresholds | Normal Refs | Why Dangerous |
 |---|---|---|---|---|
@@ -454,7 +410,7 @@ SLOPE_WINDOWS = {"2m": 60, "5m": 150, "7m": 210, "15m": 450}
 # rows — each row = 2 seconds
 ```
 
-OLS is preferred over point-to-point difference because a single noisy reading does not dominate the estimate. The slope captures the **sustained trend direction** across the window. This produces 32 vital slope features plus 4 combined-score slopes: `slope_{2m,5m,7m,15m}_combined_score`.
+OLS is preferred over point-to-point difference because a single noisy reading does not dominate the estimate. The slope captures the sustained trend direction across the window. This produces 32 vital slope features plus 4 combined-score slopes: `slope_{2m,5m,7m,15m}_combined_score`.
 
 ### Step 9 — Rolling Statistics (10 Features)
 
@@ -476,7 +432,7 @@ Remaining NaNs from rolling and lag window edge effects are filled with 0. Inter
 
 **Severity label** — raw instantaneous classification from `combined_score`:
 
-```python
+```
 CRITICAL_THRESHOLD  = 0.75
 EMERGENCY_THRESHOLD = 1.4
 
@@ -488,7 +444,9 @@ severity_label:
 
 **Result label** — FSM-confirmed label (see Section 7 for full FSM logic).
 
-**Future label** — the prediction target: `result_label` shifted 450 rows (15 minutes) forward within each patient group. Derived from `result_label` — not `severity_label` — so the target represents a confirmed, stable physiological state rather than a noisy instantaneous reading.
+**Future label** — the multi-class prediction target: `result_label` shifted 450 rows (15 minutes) forward within each patient group.
+
+**Binary future label** — the binary prediction target: `0 = Normal`, `1 = Critical or Emergency`. Derived from `result_label` so the target represents a confirmed, stable physiological state rather than a noisy instantaneous reading.
 
 ### Step 13 — Edge Row Trimming
 
@@ -514,7 +472,7 @@ The scoring pipeline from Section 6 (Steps 6–7) produces `combined_score` in r
 
 ### Temporal Stability Engine — Hierarchical FSM
 
-A Finite State Machine prevents label flickering caused by sensor noise. It operates over a sliding window of 15 consecutive severity readings (30 seconds at 2-second resolution).
+A Finite State Machine prevents label flickering caused by sensor noise. It operates over a sliding window of **15 consecutive severity readings** (30 seconds at 2-second resolution).
 
 **Why 15 readings?** Long enough to reject probe artefacts (typically 1–3 readings); short enough to confirm genuine deterioration (which persists over minutes). 30 seconds of sustained signal before confirmation is clinically appropriate.
 
@@ -536,7 +494,7 @@ NORMAL_DOWNGRADE_COUNT  = 12   # ≥12 Normal in window → downgrade from Criti
 | Critical → Emergency | Window contains ≥10 Emergency (no Critical) → upgrade |
 | Critical → Normal | Window contains ≥12 Normal (no Critical) → downgrade |
 | Normal → Critical | Window contains zero Normal readings → step up |
-| **Emergency → Normal** | **Blocked** — must pass through Critical first |
+| Emergency → Normal | **Blocked** — must pass through Critical first |
 
 **Why Emergency cannot go directly to Normal:** A patient recovering from an emergency state does not instantly return to normal physiology. Organs that experienced ischaemia or haemodynamic failure continue to show abnormal compensatory signals during recovery. Requiring passage through Critical prevents premature declaration of stability while the patient is still recovering.
 
@@ -546,7 +504,7 @@ NORMAL_DOWNGRADE_COUNT  = 12   # ≥12 Normal in window → downgrade from Criti
 
 Modern clinical AI models often produce risk scores without explaining their reasoning — a fundamental barrier to clinical adoption. The rule-based layer wraps the severity classification in a fully transparent, deterministic reasoning pipeline. It produces a structured clinical report for any patient at any time point.
 
-Every output traces back to a specific vital, a specific threshold, and a specific clinical rationale. No black-box inference. Dependencies: `numpy`, `pandas` only.
+Every output traces back to a specific vital, a specific threshold, and a specific clinical rationale. **No black-box inference.** Dependencies: `numpy`, `pandas` only.
 
 ### 5-Stage Pipeline
 
@@ -704,7 +662,7 @@ All four slope windows must agree before a recovery is reported. If the 5-minute
 ═════════════════════════════════════════════════════════════════
   Raw Severity       : EMERGENCY
   FSM Confirmed      : EMERGENCY
-  15-Min Forecast    : Emergency (probability 1.0)
+  15-Min Forecast    : At-Risk (probability 1.0)
 
   🚨  CONFIRMED EMERGENCY — Raw severity and FSM both agree.
       Sustained deterioration confirmed. Medical action required.
@@ -719,7 +677,7 @@ All four slope windows must agree before a recovery is reported. If the 5-minute
 
 Standard threshold-based systems trigger when a vital crosses a boundary. F.T begins accumulating signal **before** any boundary is reached — via the 20% early deterioration ramp introduced in Step 6. The slope features, rolling statistics, and combined score trajectories fed to the CNN-GRU carry this sub-threshold signal forward. The model predicts deterioration based on **trajectory**, not position.
 
-### CNN-GRU v7 Architecture
+### CNN-GRU v9 Architecture
 
 ```
 Input: (batch, 80 timesteps × 44 features)
@@ -732,16 +690,16 @@ Input: (batch, 80 timesteps × 44 features)
           ↓
   Attention Pooling
           ↓
-  Temperature Scaling  (T = 1.49)
+  Temperature Scaling  (T = 1.4846)
           ↓
-  Output: Normal / Critical / Emergency  (15 min ahead)
+  Output: Normal (0) / At-Risk (1)  [15 min ahead binary prediction]
 
-  Total parameters: 275,396
+  Total parameters: 389,091
 ```
 
 **Why CNN + GRU?** The multi-scale Conv1D layers extract local physiological patterns at different time scales simultaneously — short transients and sustained trends in the same pass. The bidirectional GRU then reads these patterns sequentially, capturing how the physiological state evolves over the 80-step (~2.7-minute) input window. Attention pooling weights which timesteps matter most. Residual connections preserve gradient flow through the convolutional stack.
 
-**Why temperature scaling (T = 1.49)?** Without calibration, the model's softmax probabilities are overconfident — inflated toward extreme values. Post-hoc temperature scaling produces well-calibrated probability estimates. In a clinical setting, the *degree* of certainty is as important as the predicted class.
+**Why temperature scaling (T = 1.4846)?** Without calibration, the model's softmax probabilities are overconfident — inflated toward extreme values. Post-hoc temperature scaling (T > 1 = softer distributions) produces well-calibrated probability estimates. In a clinical setting, the degree of certainty is as important as the predicted class.
 
 ### Training Configuration
 
@@ -749,90 +707,53 @@ Input: (batch, 80 timesteps × 44 features)
 |---|---|
 | Optimizer | AdamW |
 | Batch size | 256 |
-| Max epochs | 60 (early stopped at epoch 29) |
+| Max epochs | 60 (early stopped at epoch 52) |
 | Loss function | Focal Loss |
-| Regularization | SWA + EMA smoothing + Jitter augmentation |
-| Post-hoc calibration | Temperature scaling (T = 1.49) |
+| Regularisation | SWA + EMA smoothing + Jitter augmentation |
+| Post-hoc calibration | Temperature scaling (T = 1.4846) |
+| Decision threshold | 0.4849 (Youden strategy) |
+| Monitor metric | 0.6 × AUROC + 0.4 × Recall(At-Risk) |
+| Best val monitor score | 0.7168 (epoch 17) |
 
-**Why Focal Loss?** Class distribution is imbalanced (Normal ~40%, Critical ~20%, Emergency ~40%). Focal Loss down-weights well-classified examples, forcing the model to focus on hard cases — which clinically are the Critical/Emergency boundary cases that matter most.
+**Why Focal Loss?** The binary label distribution is imbalanced (Normal ~37%, At-Risk ~63%). Focal Loss down-weights well-classified examples, forcing the model to focus on hard cases — which clinically are the boundary cases that matter most.
+
+**Why Youden threshold?** The Youden index (Sensitivity + Specificity − 1) selects the threshold that maximises the sum of true positive rate and true negative rate simultaneously. This provides the best overall balance between detecting deterioration and avoiding unnecessary alerts — a clinically sound default that can be overridden by choosing a higher-sensitivity strategy.
+
+**Threshold strategy comparison (test set):**
+
+| Strategy | Threshold | Sensitivity | Specificity | F1 | Precision | Bal. Acc |
+|---|---|---|---|---|---|---|
+| **youden** ← default | 0.4849 | 0.8265 | 0.6022 | 0.8255 | 0.8244 | 0.7143 |
+| f1 | 0.4150 | 0.9736 | 0.2082 | 0.8379 | 0.7354 | 0.5909 |
+| sens_85 | 0.4574 | 0.8985 | 0.4623 | 0.8411 | 0.7907 | 0.6804 |
+| sens_90 | 0.4396 | 0.9350 | 0.3722 | 0.8451 | 0.7710 | 0.6536 |
 
 ### Dataset Split — Patient-Level
 
 Splits are patient-level, not row-level, to prevent data leakage. A patient appearing in both train and test would allow the model to memorise patient-specific physiological patterns rather than generalise.
 
-| Split | Windows | Normal | Critical | Emergency |
-|---|---|---|---|---|
-| Train | 57,300 | 23,028 | 11,660 | 22,612 |
-| Val | 6,630 | 2,323 | 1,583 | 2,724 |
-| Test | 6,876 | 2,109 | 1,547 | 3,220 |
-
-### Full Performance Metrics
-
-| Metric | Value |
-|---|---|
-| Emergency Detection Rate (Critical + Emergency combined) | ~94% |
-| Binary AUROC (Normal vs at-risk) | 0.7987 |
-| Test AUROC | 0.7234 |
-| AUPRC | 0.5654 |
-| Balanced Accuracy | 0.53 |
-
-**Per-class breakdown:**
-
-| Class | Precision | Recall | F1 | Support |
-|---|---|---|---|---|
-| Normal (0) | 0.69 | 0.42 | 0.52 | 2,109 |
-| Critical (1) | 0.30 | 0.64 | 0.41 | 1,547 |
-| Emergency (2) | 0.75 | 0.55 | 0.63 | 3,220 |
-
-**Confusion matrix:**
-
-| | Pred Normal | Pred Critical | Pred Emergency |
+| Split | Windows | Normal | At-Risk |
 |---|---|---|---|
-| True Normal | 890 | 978 | 241 |
-| True Critical | 215 | 985 | 347 |
-| True Emergency | 71 | 1,646 | 1,757 |
+| Train | 57,300 | 23,028 | 34,272 |
+| Val | 6,630 | 2,323 | 4,307 |
+| Test | 6,876 | 2,109 | 4,767 |
 
-Critical class precision (0.30) reflects inherent label boundary ambiguity — Critical and Emergency overlap physiologically, and ground truth labels carry uncertainty at this boundary. The system is intentionally tuned toward recall: a false alarm is far less costly than a missed deterioration.
+**Class weights applied during training:**
 
-## 16. Binary Performance Analysis — Normal vs Abnormal
-When Critical and Emergency classes are merged into a single **Abnormal** label, the system is evaluated as a binary detector: does it catch deteriorating patients?
-### Confusion Matrix (Binary)
+| Class | Weight |
+|---|---|
+| Normal | 1.2441 |
+| At-Risk | 0.8360 |
 
-| | Pred Normal | Pred Abnormal |
-|---|---|---|
-| **True Normal** | 890 (TN) | 1,219 (FP) |
-| **True Abnormal** | 286 (FN) | 4,735 (TP) |
+### Training Curve Summary
 
-> Abnormal = Critical + Emergency combined. True Abnormal = 5,021 windows (70.4% of test set).
-### Binary Metrics
-
-| Metric | Value | Formula |
-|---|---|---|
-| Precision | 0.795 | TP / (TP + FP) |
-| Recall (Sensitivity) | 0.943 | TP / (TP + FN) |
-| Specificity | 0.422 | TN / (TN + FP) |
-| F1 Score | 0.863 | 2 × Precision × Recall / (Precision + Recall) |
-| Accuracy | 0.796 | (TP + TN) / Total |
-| NPV | 0.757 | TN / (TN + FN) |
-| Miss Rate (FNR) | 0.057 | FN / (TP + FN) |
-| AUROC (Binary) | 0.799 | Reported metric |
-
-### What These Numbers Mean
-
-**Recall of 0.943** — Only 286 out of 5,021 truly abnormal windows were missed. The system successfully flags 94.3% of all deteriorating patient windows — the most important metric for an early warning system.
-
-**Specificity of 0.422** — When a patient is genuinely stable, the system still raises an alert 57.8% of the time. This is an expected consequence of the recall-first design: F.T is intentionally tuned so that a missed deterioration is penalised far more heavily than a false alarm.
-
-**Miss Rate of 5.7%** — 286 windows where the system predicted Normal but the patient was abnormal. These are the clinically consequential failures and the primary target for future improvement.
-
-**F1 of 0.863** — Interpreted with caution given class imbalance (70.4% of test set is Abnormal). A naive classifier predicting Abnormal for every window achieves F1 ≈ 0.82, making the effective learned gain approximately +0.04 above that baseline.
-
+The monitor metric (0.6 × AUROC + 0.4 × Recall[At-Risk]) peaked at epoch 17 (score = 0.7168). Validation AUROC peaked at epoch 12 (0.7503). Early stopping triggered at epoch 52 after no improvement in the monitor metric for 35 epochs, indicating a stable convergence plateau.
 
 ---
 
 ## 10. Feature Engineering
 
-F.T separates two concerns: the **master dataset** (full analytical coverage, 99 features — used by the Rule-Based Layer) and the **model input set** (curated interpretable subset — used by CNN-GRU).
+F.T separates two concerns: the **master dataset** (full analytical coverage, 99 features — used by the Rule-Based Layer) and the **model input set** (curated interpretable subset of 44 features — used by CNN-GRU v9).
 
 **Design principle:** Every model input maps directly to a physiological concept. PCA, latent embeddings, and black-box statistical constructs are deliberately excluded. The system can explain every feature it acts on.
 
@@ -840,19 +761,19 @@ F.T separates two concerns: the **master dataset** (full analytical coverage, 99
 
 | Category | Count | Features |
 |---|---|---|
-| Identifiers | 2 | patient_id · time |
-| Raw Vitals | 9 | dbp · mbp · heart_rate · resp_rate · sbp · spo2 · etco2 · pulse_pressure · resp_rate_smoothed |
+| Identifiers | 2 | `patient_id` · `time` |
+| Raw Vitals | 9 | `dbp` · `mbp` · `heart_rate` · `resp_rate` · `sbp` · `spo2` · `etco2` · `pulse_pressure` · `resp_rate_smoothed` |
 | Vital Slopes (2m, 5m, 7m, 15m) | 32 | OLS slope for each of 8 vitals × 4 horizons |
-| Continuous Abnormality Scores | 8 | z_spo2 · z_hr · z_rr · z_sbp · z_dbp · z_mbp · z_etco2 · z_pp |
-| Scaled Severity Scores | 8 | s_spo2 · s_hr · s_rr · s_sbp · s_dbp · s_mbp · s_etco2 · s_pp |
-| Physiological Instability Scores | 2 | severity_sum · combined_score |
-| Disease Pattern Flags | 12 | t1_shock_spiral · t1_resp_burnout · t1_hypercapnic · t2_pulse_pressure_low · t2_widepp_highsbp · t2_resp_hemo_combo · t3_hyper_emergency · t3_stable_deceiver · t3_masked_shock · t3_occult_acidosis · t3_trend_decline · t3_trend_activate |
-| Combined Score Slopes (2m, 5m, 7m, 15m) | 4 | slope_{2m/5m/7m/15m}_combined_score |
+| Continuous Abnormality Scores | 8 | `z_spo2` · `z_hr` · `z_rr` · `z_sbp` · `z_dbp` · `z_mbp` · `z_etco2` · `z_pp` |
+| Scaled Severity Scores | 8 | `s_spo2` · `s_hr` · `s_rr` · `s_sbp` · `s_dbp` · `s_mbp` · `s_etco2` · `s_pp` |
+| Physiological Instability Scores | 2 | `severity_sum` · `combined_score` |
+| Disease Pattern Flags | 12 | `t1_shock_spiral` · `t1_resp_burnout` · `t1_hypercapnic` · `t2_pulse_pressure_low` · `t2_widepp_highsbp` · `t2_resp_hemo_combo` · `t3_hyper_emergency` · `t3_stable_deceiver` · `t3_masked_shock` · `t3_occult_acidosis` · `t3_trend_decline` · `t3_trend_activate` |
+| Combined Score Slopes (2m, 5m, 7m, 15m) | 4 | `slope_{2m/5m/7m/15m}_combined_score` |
 | Rolling Statistics | 10 | roll_mean/std across multiple windows + roll_min/max_15m_combined |
-| Lag Features (15m lookback) | 9 | lag_15m for all 8 vitals + lag_15m_combined_score |
-| Labels | 3 | severity_label · result_label · future_label |
+| Lag Features (15m lookback) | 9 | lag_15m for all 8 vitals + `lag_15m_combined_score` |
+| Labels | 3 | `severity_label` · `result_label` · `future_label` |
 
-The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and lag features are retained in the master dataset for the Rule-Based Layer but excluded from CNN-GRU inputs. The model uses a curated subset; the explainability layer uses everything.
+The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and lag features are retained in the master dataset for the Rule-Based Layer but excluded from CNN-GRU inputs. The model uses a curated 44-feature subset; the explainability layer uses everything.
 
 ---
 
@@ -861,7 +782,7 @@ The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and 
 ```
 ├── cleaning.ipynb          # Full pipeline: cleaning → feature engineering → labelling
 ├── RULE_BASED_AI.ipynb     # Rule-Based Clinical Reasoning Layer (all 5 stages)
-├── cnn_gru_2.py            # Feature engineering & CNN-GRU v7 training
+├── cnn_gru_v9.py           # Feature engineering & CNN-GRU v9 binary training
 ├── README.md
 ├── news-2/                 # NEWS2 labelling and comparison analysis
 └── tier_combination/       # Tier pattern explanation and documentation
@@ -910,8 +831,8 @@ final_report(current_stat, past_stat)
 
 | Dataset | Description | Link |
 |---|---|---|
-| Initial Dataset | Raw data before cleaning | [Download from Kaggle](https://www.kaggle.com) |
-| Master Dataset | Processed, 99-feature dataset | [Download from Kaggle](https://www.kaggle.com) |
+| Initial Dataset | Raw data before cleaning | Download from Kaggle |
+| Master Dataset | Processed, 99-feature dataset | Download from Kaggle |
 
 ---
 
@@ -919,13 +840,13 @@ final_report(current_stat, past_stat)
 
 | Limitation | Detail |
 |---|---|
-| Low Critical precision | Inherent label boundary ambiguity — Critical and Emergency overlap physiologically. System tuned toward recall over precision. |
 | Single-centre data | Trained on VitalDB only. Generalisability to other ICU populations or hospital settings is unknown. |
 | No clinical validation | Research prototype. Not prospectively validated. Not a certified medical device. |
 | Intraoperative context | VitalDB captures surgical/perioperative monitoring — dynamics may differ from a general ICU population. |
 | Hardware dependency | Requires continuous high-frequency monitoring at 2-second resolution, not available in all clinical settings. |
 | NEWS2 comparison scope | Modified NEWS2 excluded temperature and consciousness due to data constraints; full comparison pending. |
 | Age range | Trained on patients aged 60–80 years. Performance outside this range has not been evaluated. |
+| Specificity ceiling | At the Youden threshold, specificity is 0.6022, meaning ~40% of stable patients trigger an alert — an expected trade-off of the recall-first design. |
 
 ---
 
@@ -940,6 +861,7 @@ final_report(current_stat, past_stat)
 - **Multi-hospital validation** — Generalisability across different ICU populations
 - **Extended age range** — Validation below 60 and above 80 years
 - **Full NEWS2 comparison** — Including temperature and consciousness with a suitable dataset
+- **Multi-class prediction head** — Extending the binary model to retain Normal / Critical / Emergency granularity
 
 ---
 
@@ -952,18 +874,82 @@ final_report(current_stat, past_stat)
 | Data resolution | 2-second intervals |
 | Monitor source | VitalDB / Solar8000 |
 | Prediction window | ~2.7-min input → 15 min early warning |
-| Severity classes | Normal / Critical / Emergency |
+| Prediction target | Binary: Normal (0) / At-Risk (1) |
+| Severity classes (rule-based) | Normal / Critical / Emergency |
 | Classification thresholds | < 0.75 Normal · 0.75–1.4 Critical · ≥ 1.4 Emergency |
 | Master dataset features | 99 |
-| Model architecture | CNN-GRU v7 (275,396 parameters) |
-| Emergency detection rate | ~94% |
-| Binary AUROC (Normal vs at-risk) | 0.7987 |
-| Test AUROC | 0.7234 |
+| CNN-GRU v9 input features | 44 |
+| Model architecture | CNN-GRU v9 (389,091 parameters) |
+| **Test AUROC** | **0.8008** |
+| **Test AUPRC** | **0.8945** |
+| **Balanced Accuracy** | **0.7143** |
+| **Sensitivity** | **0.8265** |
+| **Specificity** | **0.6022** |
+| **F1 (At-Risk)** | **0.8255** |
+| **Precision (At-Risk)** | **0.8244** |
+| Decision threshold | 0.4849 (Youden strategy) |
+| Temperature scaling | T = 1.4846 |
 | FSM confirmation window | 15 consecutive readings (30 seconds) |
 | Condition multiplier cap | 2.2× |
 | Early ramp onset | 20% before formal threshold |
 | Tier multipliers | T1/T2 base: 1.4672 · T3 base: 1.19 |
 | Extra tier factors | T1: ×1.30 · T2: ×1.20 · T3: ×1.10 |
+
+---
+
+## 16. Binary Performance Analysis — Normal vs At-Risk
+
+When Critical and Emergency classes are merged into a single **At-Risk** label, the system is evaluated as a binary detector: does it catch deteriorating patients before clinical failure?
+
+### Test Set Confusion Matrix
+
+```
+               Pred Normal   Pred At-Risk
+True Normal :      1270           839       (Total: 2,109)
+True At-Risk:       827          3940       (Total: 4,767)
+
+  TP = 3940    FP = 839    TN = 1270    FN = 827
+```
+
+At-Risk = Critical + Emergency combined. True At-Risk = 4,767 windows (69.3% of test set).
+
+### Binary Metrics
+
+| Metric | Value | Formula |
+|---|---|---|
+| **Precision** | **0.8244** | TP / (TP + FP) |
+| **Recall (Sensitivity)** | **0.8265** | TP / (TP + FN) |
+| **Specificity** | **0.6022** | TN / (TN + FP) |
+| **F1 Score** (At-Risk) | **0.8255** | 2 × Precision × Recall / (Precision + Recall) |
+| **Accuracy** | **0.7577** | (TP + TN) / Total |
+| **Balanced Accuracy** | **0.7143** | (Sensitivity + Specificity) / 2 |
+| **AUROC** | **0.8008** | Area under ROC curve |
+| **AUPRC** | **0.8945** | Area under Precision-Recall curve |
+| NPV | 0.6056 | TN / (TN + FN) |
+| Miss Rate (FNR) | 0.1735 | FN / (TP + FN) |
+
+### What These Numbers Mean
+
+**Sensitivity of 0.8265** — The system correctly flags 82.65% of all genuinely deteriorating patient windows. Out of 4,767 truly At-Risk windows in the test set, 3,940 were correctly identified.
+
+**AUPRC of 0.8945** — In this dataset where At-Risk patients constitute 69.3% of the test set, AUPRC near 0.90 reflects strong discrimination and precision retention across all operating thresholds. This is the most informative single metric for imbalanced binary clinical classification.
+
+**Specificity of 0.6022** — When a patient is genuinely stable, the system raises an alert approximately 40% of the time. This is an expected consequence of the **recall-first design**: F.T is intentionally tuned so that a missed deterioration is penalised far more heavily than a false alarm. Clinicians can adjust the operating threshold using the sens_85 or sens_90 strategies if alert volume is a deployment concern.
+
+**Miss Rate of 17.35%** — 827 windows where the system predicted Normal but the patient was At-Risk. These are the clinically consequential failures and the primary target for future improvement.
+
+**F1 of 0.8255** — Reflects a strong balance between precision and recall on the At-Risk class. Given the 69.3% At-Risk prevalence in the test set, a naive classifier predicting At-Risk for every window achieves F1 ≈ 0.82; the model's effective learned gain over this baseline is confirmed by the AUROC and AUPRC.
+
+### Threshold Strategy Guide
+
+Different clinical deployment settings may favour different thresholds:
+
+| Strategy | Use Case | Sensitivity | Specificity | Trade-off |
+|---|---|---|---|---|
+| **youden** (default) | Balanced deployment | 0.8265 | 0.6022 | Best overall balance |
+| sens_85 | High-volume wards | 0.8985 | 0.4623 | Fewer missed, more alerts |
+| sens_90 | Critical escalation path | 0.9350 | 0.3722 | Very few missed, high alert burden |
+| f1 | Maximum F1 score | 0.9736 | 0.2082 | Near-universal alerting |
 
 ---
 

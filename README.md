@@ -9,6 +9,8 @@ Built on the **VitalDB dataset**: 2,378,857 rows of high-resolution physiologica
 <img width="1440" height="680" alt="image" src="https://github.com/user-attachments/assets/76fdcc45-f232-4073-803e-062c036f44cf" />
 
 ---
+Nb:-Critical denotes a patient requiring clinical attention and monitoring. Emergency denotes a patient requiring immediate intervention.
+
 
 ## Table of Contents
 

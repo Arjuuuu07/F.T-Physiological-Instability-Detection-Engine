@@ -758,7 +758,7 @@ Splits are patient-level, not row-level, to prevent data leakage. A patient appe
 
 ### Training Curve Summary
 
-The monitor metric (0.6 × AUROC + 0.4 × Recall[At-Risk]) peaked at epoch 17 (score = 0.7168). Validation AUROC peaked at epoch 12 (0.7503). Early stopping triggered at epoch 52 after no improvement in the monitor metric for 35 epochs, indicating a stable convergence plateau.
+The monitor metric (0.6 × AUROC + 0.4 × Recall[At-Risk]) peaked at epoch 17 (score = 0.7168). Validation AUROC peaked at epoch 12 (0.7503). Early stopping triggered at epoch 37 after no improvement in the monitor metric for 20 epochs, indicating a stable convergence plateau.
 
 ---
 
@@ -793,7 +793,7 @@ The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and 
 ```
 ├── cleaning.ipynb          # Full pipeline: cleaning → feature engineering → labelling
 ├── RULE_BASED_AI.ipynb     # Rule-Based Clinical Reasoning Layer (all 5 stages)
-├── cnn_gru_3.py            # Feature engineering & CNN-GRU v9 binary training
+├── cnn_gru_2_v2.py         # Feature engineering & CNN-GRU v9 binary training
 ├── README.md
 ├── news-2/                 # NEWS2 labelling and comparison analysis
 └── tier_combination/       # Tier pattern explanation and documentation

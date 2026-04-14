@@ -922,7 +922,7 @@ True At-Risk:       827          3940       (Total: 4,767)
   TP = 3940    FP = 839    TN = 1270    FN = 827
 ```
 
-At-Risk = Critical + Emergency combined. True At-Risk = 4,767 windows (69.3% of test set).
+
 
 ### Binary Metrics
 
@@ -949,7 +949,7 @@ At-Risk = Critical + Emergency combined. True At-Risk = 4,767 windows (69.3% of 
 
 **Miss Rate of 17.35%** — 827 windows where the system predicted Normal but the patient was At-Risk. These are the clinically consequential failures and the primary target for future improvement.
 
-**F1 of 0.8255** — Reflects a strong balance between precision and recall on the At-Risk class. Given the 69.3% At-Risk prevalence in the test set, a naive classifier predicting At-Risk for every window achieves F1 ≈ 0.82; the model's effective learned gain over this baseline is confirmed by the AUROC and AUPRC.
+**F1 of 0.8255** — Reflects a strong balance between precision and recall on the At-Risk class. 
 
 ### Threshold Strategy Guide
 

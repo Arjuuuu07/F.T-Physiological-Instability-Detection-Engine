@@ -247,7 +247,7 @@ F.T does not replace NEWS2. It extends it — adding early and hidden instabilit
 
 ## 6. Dataset Pipeline — How the Master Dataset Is Built
 
-Complete sequence of operations in `cleaning.ipynb` that transforms raw VitalDB exports into the 99-feature master dataset. Every design decision is documented here.
+Complete sequence of operations in `cleaning-medical-org.ipynb` that transforms raw VitalDB exports into the 99-feature master dataset. Every design decision is documented here.
 
 ### Step 1 — Sort by Patient and Time
 

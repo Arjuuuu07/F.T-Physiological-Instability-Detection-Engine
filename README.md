@@ -791,7 +791,7 @@ The z-scores, pattern flags, 2m vital slopes, shorter-window rolling stats, and 
 ## 11. Repository Structure
 
 ```
-├── cleaning-medical-org.ipynb          # Full pipeline: cleaning → feature engineering → labelling
+├── medical cleaning.ipynb          # Full pipeline: cleaning → feature engineering → labelling
 ├── RULE_BASED_AI.ipynb     # Rule-Based Clinical Reasoning Layer (all 5 stages)
 ├── cnn_gru_2_v2.py         # Feature engineering & CNN-GRU v9 binary training
 ├── README.md
